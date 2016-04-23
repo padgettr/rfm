@@ -1,0 +1,16 @@
+Edit the Makefile to suit your system.
+
+Edit config.h as required.
+
+If you want to use the supplied support scripts, as root:
+cp scripts/*.sh /usr/local/bin
+
+Then:
+
+make clean
+
+make
+
+make install
+
+The last command will install an executable called rfm to /usr/local/bin by default.

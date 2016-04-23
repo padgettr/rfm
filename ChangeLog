@@ -1,0 +1,80 @@
+rfm-1.1: Remove all built in functions (copy, move, delete, properties) and move to config.h.
+         Cleanups - remove duplicate code
+         Add flgs for different run modes for child processes.
+
+rfm-1.2: Make all child processes asynchronous (exec_child_handler() added).
+1.2.1    Add stop button to halt thumbnailing process.
+1.2.2    Fix double-click problem: sometimes not registered. Handle double clicks in on_button_press(), but keep item-activated signal connection, for keyboard support.
+1.2.3    Fix slow focus on large directories: block parent window focus-out-event in do_iconview().
+1.2.4    Make show_text() return a GtkWidget. Make info boxes non-modal.
+1.2.5    Bug fixes. Small changes to allow to compile with clang.
+1.2.6    Some clean-ups, make all child stderr go to rfm stderr (to avoid pipe buffer>64k if large file operations fail). Add SHOW_MIME_TYPE to display mime types to stdout on double click. This may be useful when determining mime types for config.h (file sometimes reports a different mime type to freedesktop)
+1.2.7    Further code clean-ups (more still to come!), added -i option to replace SHOW_MIME_TYPE.
+1.2.8    Cleanups, removed MX_MENU and use malloc() to allocate memory for menu widgets.
+
+rfm-1.3: config.h format changed to allow user defined toolbar buttons.
+         Change dir to parent before executing commands: e.g. g_spawn_async(parent,v,NULL,0,NULL,NULL,NULL,NULL)
+1.3.1    Track child processes and add info button. Added function info_clicked() to display child info.
+1.3.2    Stock icons are depreciated in gtk-3.10: removed dependence on them. Add icons.h: these are inline defaults pixbufs generated using e.g. :
+         gdk-pixbuf-csource --raw --name=inlineUp go-up.png >> icons.h
+         There is a script in the folder stock-icons.
+         Change other depreciated function calls: gtk_widget_modify_font() -> gtk_widget_override_font()
+                                                  gtk_drag_begin           -> gtk_drag_begin_with_coordinates()
+         Change order of icon lookups if a prefix is defined in config.h. Previously, the prefix was applied to all mime lookups. This is not correct, the icon spec default should first be checked, then the prefix, then fallback to generic, finally use a built in if all else fails.
+1.3.3    Fixed a bug with user defined toolbar buttons. If the icon theme was forced in config.h, user defined tool button icons were still loaded from the default theme.
+1.3.4    Update thumbnails during idle (improved responsiveness on large image directories). Fixed bug with icon size: symlink icons were not scaled properly.
+1.3.5    Add timer to read stdout pipe to prevent blockages due to pipe full; tried usig GIO but too many problems... timer is started if child_hash is not empty.
+1.3.6    Change logic of cp_mv_check_path(): previously it called stat on dest_path for each call. This results in multiple stats on dest_path for dnd multiple files dropped. If the function is called via dnd, the dest_path MUST be a directory. If called from the menu for a single item, call stat on the item in file_menu_cp_mv(): if it doesn't exist no need to even call cp_mv_check_path(). Also, added a different response if both src and dest are directories: in this case make it clear they will be merged and existing files present in both dirs will be overwritten in the destination path.
+1.3.7    Removed block on motion events: high cpu only if mouse motion is crazy over icons. Detect key press events for CTRL and SHIFT: if these are pressed let icon-view handle selections and exit on_button_press() imediately (allows deselect on multiple files with mod buttons pressed). Remove icon_view signal handler for item activation, and only handle double click events in on_button_press() (calls item_activated()). This prevents keyboard activation of icons, but stops the strange icon_view behavour when MOD keys are pressed (I didn't want activation if MOD key down). Keyboard loss is not a major problem: I didn't intend keyboard control anyway, it was just a built in function of icon-view. Also a few clean-ups: get rid of local_drag as a global, use g_object_set_data() instead.
+         Also removed:
+            static gboolean block_event(GtkWidget *widget, GdkEvent *event, gpointer user_data)
+            {
+               return TRUE;
+            }
+         This was a callback from add_iconview():
+            /* Block focus events (12) on the window, otherwise focus change is very slow on large directories */
+            /* Seems to be fixed in 3.10.7 */
+            g_signal_connect (window, "focus-out-event", G_CALLBACK(block_event), NULL);
+         Added in 1.2.3 above. Symptoms were on large directories, right click took ages to focus from main window to menu, or focus change from rfm to any other window. Same problem in gtk3-demo... seems to have been fixed in gtk 3.10.7. 
+1.3.8    Correct a bug in CTRL / SHIFT keypress code. Previously used event handler to set a flag true or false based on key down or not. Didn't work properly: if user held key down, then focus on another window and release key flag was not cleared. Now detect key CTRL / SHIFT press in on_button_press() using gtk_get_current_event_state(). Removed flag and key press / key release handler.
+1.3.9    Attempt to correct random core dumps on exit: examining dump, seemed to be related to section_changed(). Deselect all icons before gtk_main_quit(); move gtk_main_quit() to begining of cleanup(); add check to cleanup() for running background jobs. May need to check for gtk_main_quit() in child_supervisor timer (using gtk_main_iteration_do(FALSE) - returns TRUE if gtk_main_quit has been called).
+         If problem persists, try g_signal_connect(window, "delete-event", G_CALLBACK(cleanup), icon_view);
+         and only shut down after all processes finished.
+1.3.10   Don't show window decorations: add gtk_window_set_decorated(GTK_WINDOW(dialog),FALSE);
+         NOTE that this will dissable window decorations in all window managers! To show window decorations again (including gtk client side) uncomment RFM_SHOW_WINDOW_DECORATIONS in config.h
+         Remove gtk_window_set_has_resize_grip(GTK_WINDOW(window), FALSE);
+         Change MX_ARGS to RFM_MX_ARGS
+1.3.11   Make the filer compile under GTK2. Alter Makefile to allow this. Add RFM_USE_GTK2 tests to rfm.c.
+         Cleanups: remove parent_atime global variable and add into fill_store() instead.
+1.3.12   Correct a bug in show_msgbox(): utf8 was not validated for default or pango message boxes. Change logic to check and convert strings before dialog is assigned.
+         Still getting core dumps on exit, using musl libc. strace showed bad file descriptor erros on close: it seems that g_io_channel_shutdown() closes the FD associated with the channel. Re-order in cleanup()to remove inotify watches before calling g_io_channel_shutdown(), remove close(inotify_fd); close(mount_fd);
+1.3.13   Got a segfault whilst copying a file; probably file was removed by another app during file checks in rfm. Found that in cp_mv_check_path() return value of stat was not checked: fixed this and return GTK_RESPONSE_CANCEL if stat on source or destination files fails. Also check return of stat() in main() if -d option supplied. This didn't cause trouble, but unable to verify (only checked man 2 stat) status of returned statbuf if stat returns error: is statbuf initialised to zero?
+
+***** Start version 1.4 due to change in config.h *****
+
+1.4.0    Changed atime variable names to mtime in add_itme() and fill_store(). It was actually mtime that was used, not atime. *** This requires a config.h change: parent_atime_offset changed to parent_mtime_offset ***
+         Added new functionality: Re-order and refresh: Right click on refresh button toggles sort mode from default alphabetic-directores-first to mtime order, newest files appear first, before refresh is done. Note that a refresh is not neccessary just to re-order - could implement as a separate button, but no standard icon available.
+         The above function requires file mtime to be stored; remove various stat calls in thumbnailing functions; use the new stored value instead.
+         Correct a bug in add_item(): when compositing symlink icons, the destination height and width was fixed at 32. Instead, use gdk_pixbuf_get_width(defaultPixbufs->symlink),gdk_pixbuf_get_height(defaultPixbufs->symlink) for the destination width and height.
+1.4.1    Finally get round to implementing stderr pipes for child processes: modified read_char_pipe() to write data to **buffer using same timer as stdOut; then call this function to read either stdOut or stdErr. Set O_NONBLOCK on stdErr_fd.
+1.4.2    Correct possible race condition between child_supervisor() and exec_child_handler() if timer calls are multi-threaded: If exec_child_handler was called whilst timer function is active, closed file descriptors for child pipes may be read. Now, just set the status in exec_child_handler() and call show_child_output() from child_supervisor. Also some other minor changes.
+         Note that a race condition may still exist: if child_supervisor timer is called again within the time it takes for show_child_output() to remove the child from child_hash. Really should stop the timer in child_supervisor() by returning FALSE instead of break; then start the timer again after the finished child has been dealt with.
+         However, a simple test by adding sleep(10) into the function child_supervisor() demonstrates that infact the timer calls are not multi-threaded anyway! Also, this race condition shouldn't be an issue with modern systems, since the timer is set at 100ms.
+1.4.3    Merged copy / move file code for dnd and copy/move menu. Some cleanups: window decorations seems to work again, remove code from dialog windows, but retain for main window (just in case!).
+         Corrected bug when child info is displayed: In info_clicked(), child_attribs=(RFM_ChildAttribs*)child_hash_values->data should be child_attribs=(RFM_ChildAttribs*)listElement->data. Bug caused only the last child's info to be shown repeatedly.
+
+***** Start version 1.5 due to change in config.h *****
+
+1.5.0    User button definitions changed in config.h to allow user defined internal functions to be called.
+         Added RFM_MOUNT_MEDIA_PATH to specify where (e.g. udisksctl mount) mounts media. Also added new run option: RFM_EXEC_MOUNT
+         This is intended to be specified for the mount command used for removeable media (i.e. udisksctl mount). When specified, output is shown as per RFM_EXEC_PLAIN, but in addition, if the command is successful the parent directory is switched to that specified by RFM_MOUNT_MEDIA_PATH. On Arch, this is a tmpfs filesystem, /run/media/<user name>.
+1.5.1    Correct some small bugs: g_io channels were unrefed before close, causing a seg fault on exit (not in X, only in Wayland). Add event to start drag instead of NULL in on_button_press(); Use global selected icon theme for user defined tool buttons (removed gtk_image_new_from_icon_name() & use same method (gtk_icon_theme_load_icon()) as used for default icons  (since the selected theme (default for screen or defined) is global anyway).
+1.5.2    gdk_pixbuf_new_from_inline () is deprecated in favor of GResource. Switch to using xpm files instead for built in icons.
+1.5.3    gtk_widget_override_font() is deprecated; use new gtk_text_view_set_monospace () to set monospace instead (since 3.16). Remove msg_font from config.h - not required; if compiled with gtk2, the default font will be used.
+1.5.4    Only refresh directory if there are mount points in the current path.
+1.5.5    Change thumbnailing: call gen_thumbnail() from an idle timer instead of forking a process for each job. Probably should use a thread, but seems fast enough (actually seems slightly faster than fork). Still forks if calling an external thumbnailer. This was done to try and reduce the number of forked jobs for large image directories: forking reduces system entropy and occasionally may have contributed to low entropy problem.
+         Revert changes made in 1.5.4: there was a race condition in reading /proc/mounts.
+1.5.6    Add 'copy path' to root menu: copies current path to PRIMARY clipboard only - new function added, copy_parent_to_clipboard.
+1.5.7    Changes to thumbnailing: previous changes did not limit the number of external thumbnailing jobs run at a time - for large files accross a slow network this caused all memory to be used as hundreds of child thumbnailing processes were forked. Added gboolean rfm_thumbJobs to RFM_flags structure: this is TRUE if a thumbnailing job is in progress. If the current file requires an external thumbnailer, but a previous job is still running, put it to the back of the queue and try the next one.
+1.5.8    Further improvement for slow network connections: inotify watches for IN_CREATE and IN_CLOSE_WRITE events. Previously IN_CREATE triggered a full directory scan; now IN_CREATE calls insert_item(), which just adds the item in the existing model. If it's a dir nothing further is done: it is assumed that the directory was successfuly created (and not deleted in the time between inotify and update). When copying / moving files, the new file will appear as mime type application/octet-stream until a IN_CLOSE_WRITE is triggered, at this point fill_store is called. This prevent two calls to fill_store, and prevents duplicate thumbnailing events added to the queue.
+1.5.9    Correct bug with last change: hidden items (starting with '.') were shown, alter insert_item(). Added ability to search for a sub string in mime sub type: some MS files have long mime types, but probably only want to match e.g. 'vnd.ms-excel' for all excel files. In config.h, if sub type is prefixed with a / then the following characters will be matched anywhere within the files mime sub-type. Uses strstr() added to item_activated() and popup_file_menu().

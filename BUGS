@@ -1,0 +1,74 @@
+This is a list of bugs during early development, now fixed. Later changes are recorded in ChangeLog.
+
+Version 1.2:
+BUG: Child process (cp / mv / rm in particular) hangs if many errors are encountered. Due to pipe buffer being full.
+FIXED: Send all stderr from child processes to rfm's stderr. Add warning about pipe buffer limit to config.h for stdout. Bug fixed for stdout in version 1.3.5.
+
+BUG: rfm.c:264:127: warning: format string is not a string literal (potentially insecure) [-Wformat-security] ...msg);
+     when compiling with clang. Basically, if msg contains any printf style flag sequences, e.g. %i, these may cause a crash when the non-existant arguments are accessed.
+FIXED: Make msg a string literal, i.e. add "%s",msg. However, this has the side effect that the pango markup no longer works!
+       Use gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog),msg); for pango encoded strings. Change gtk_message_dialog_new_with_markup() to gtk_message_dialog_new(). (v1.2.5)
+
+BUG: menu_separator[] defined as static GtkWidget *menu_separator[1]; but contains two elements. Picked up by clang compiler.
+FIXED: Change definition to static GtkWidget *menu_separator[2];
+
+BUG: Error messages were defaulted to pango markup boxes. Could cause problems with some filenames.
+FIXED: Make default dialog a non-markup box in show_msgbox(). (v1.2.4)
+
+BUG: Error messages truncated as char resulting in incorrect UTF-8 characters, and empty message boxes.
+FIXED: Properly handle std_out/std_err. Created read_char_pipe() to read both std_out and std_err. 
+
+BUG: Select a file1, then select another file2 then double click file2. Function item_activated is NOT triggered! Appears to be a bug in GTK icon_view; same problem in gtk3-demo and gtk-demo!
+FIXED: Handle double clicks in on_button_press(). (V1.2.2)
+
+
+Version 1.1:
+BUG : probably need to block window events to prevent errors such as
+
+(rfm:6691): Gdk-CRITICAL **: gdk_window_get_events: assertion `GDK_IS_WINDOW (window)' failed
+
+(rfm:6691): GLib-GObject-CRITICAL **: g_object_ref: assertion `G_IS_OBJECT (object)' failed
+
+      if the window border is clicked in dwm.
+FIXED : Update to GTK? Went away at some point.
+
+BUG : if a filesystem is unmounted with the filer still open and showing the contents, strange behaviour results. WORK-AROUND: close rfm and restart OR click home then click up.	
+FIXED : Check current dir (parent) is valid after each change to /proc/mounts; if parent is not valid issue error and return to home dir
+
+
+Version 1.0:
+BUG : If inotify fails (e.g. no permissions to enter directory) then clicking up does not refresh the view. Probably need to NOT enter a directory where dir read fails.
+FIXED : check that directory can be read in set_parent_path() before changing directory. 
+
+BUG : Strange results if parent dir is deleted.
+FIXED : Close file manager if parent is deleted; detected via inotify.
+
+BUG : If a file is deleted, then immediately replaced (e.g. gcc & a.out exists) the new item is added during the delete cycle before the file has finished writing. The mime type is therefore not detected correctly, and the icon appears as plain text.
+FIXED : Refresh item data on inotify IN_CLOSE_WRITE.
+
+BUG : When an item's text is highlighted bold, the search algorithm orders on markup column text, so the item appears out of place (since the name begins with <b>).
+FIXED : Strip initial pango markup <x> in sort_func(). 
+
+
+BUG : Mounting/unmounting not always registered if /etc/mtab or /proc/mounts not finished updating, despite inotify IN_CLOSE_WRITE. Fudged for now by adding a 100ms delay.
+FIXED : poll /proc/mounts for changes with POLLPRI flag (G_IO_PRI in gtk+)
+
+BUG : When mounts change, only refresh view if there are mount points in the current view.
+
+BUG : Locks up if the resize grip is used in dwm.
+FIXED : Added 'gtk_window_set_has_resize_grip(GTK_WINDOW(window), FALSE)' to remove the resize grip
+
+General problems
+----------------
+
+When viewing large directories, the filer is very slow. Even leaving and entering the filer window is
+slow. The problem appears to be in the gtk3 iconview code itself:
+
+gtk-demo from gtk2: start iconview demo and navigate to /usr/lib. Enter and leave events do not
+seem to be processed, the icon selected colour does not change on leaving the window. The redraw is fast
+(click and icon and move another window over iconview imediately).
+
+gtk3-demo from gtk3: start iconview demo and navigate to /usr/lib. Try enter and leave window: icon colour
+changes very slowly. Click on an icon, then drag another window over: redraw is also slow.
+
+FIXED: Block window focus-out-event. This prevents the selection from changing colour when focus is lost, but who cares? (v1.2.3)
