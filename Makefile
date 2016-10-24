@@ -2,7 +2,7 @@
 
 # Uncomment the next line for GTK+-2 build (requires latest version 2.24.23)
 #USE_GTK2 = True
-VERSION = 1.5.9
+VERSION = 1.5.10
 
 ifdef USE_GTK2
 GTK_VERSION = gtk+-2.0
@@ -11,6 +11,9 @@ else
 GTK_VERSION = gtk+-3.0
 CPPFLAGS =
 endif
+
+# Uncomment the line below if compiling on a 32 bit system (otherwise stat() may fail on large directories; see man 2 stat)
+CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
 SRC = rfm.c
 OBJ = ${SRC:.c=.o}

@@ -74,7 +74,7 @@ typedef struct {
 
 typedef struct {
    gboolean rfm_localDrag;
-   gboolean rfm_thumbJobs;
+   gboolean rfm_thumbJobs; /* Keep track of forked thumbnail job: TRUE if a job is running */
 } RFM_flags;
 
 typedef struct {
@@ -127,6 +127,7 @@ static GList *thumb_queue=NULL;         /* Thumbnail queue */
 static const gchar* host_name;
 static gchar *home_path;   /* Users home dir */
 static gchar *thumb_dir;   /* Users thumbnail directory */
+static long rfm_pid;       /* Process ID of this instance of filemanager */
 
 static GIOChannel *inotify_channel;
 static GIOChannel *mounts_channel;
@@ -164,6 +165,7 @@ static void die(const char *errstr, ...);
 static void cleanup(GtkWidget *window , GtkWidget *icon_view);
 static void show_child_output(RFM_ChildAttribs *child_attribs);
 static void set_parent_path(gchar* path);
+static void fill_store(void);
 
 /* TODO: Function definitions */
 
@@ -558,9 +560,9 @@ static gboolean internal_thumbnailer(gchar *sourcePath, gchar *mime_root, gchar 
    if (strcmp(mime_root,"image")==0)
       thumb=gdk_pixbuf_new_from_file_at_scale(sourcePath, RFM_THUMBNAIL_SIZE, RFM_THUMBNAIL_SIZE, TRUE, NULL);
    if (thumb!=NULL) {
-      mtime_tmp=g_strdup_printf("%lld", mtime_file);
+      mtime_tmp=g_strdup_printf("%"G_GINT64_FORMAT, mtime_file);
       uri=g_filename_to_uri(sourcePath, NULL, NULL);
-      tmp_thumb_file=g_strdup_printf("%s-%s-%ld", thumbPath, PROG_NAME, (long)getpid());
+      tmp_thumb_file=g_strdup_printf("%s-%s-%ld", thumbPath, PROG_NAME, rfm_pid);
 
       gdk_pixbuf_save(thumb,tmp_thumb_file, "png", NULL,
             "tEXt::Thumb::MTime", mtime_tmp,
@@ -625,10 +627,8 @@ static gboolean gen_thumbnails(RFM_flags *rfmFlags)
    GList *listElement;
 
    listElement=g_list_first(thumb_queue);
-   if (listElement==NULL) {
-      gtk_widget_set_sensitive(GTK_WIDGET(stop_button),FALSE);
-      return FALSE;   /* End of list */
-   }
+   if (listElement==NULL)
+      return FALSE;
 
    c_iter=g_hash_table_lookup(thumb_hash,listElement->data); /* Check that some other program hasn't already generated this one first */
    if (c_iter==NULL) {
@@ -636,7 +636,11 @@ static gboolean gen_thumbnails(RFM_flags *rfmFlags)
       thumb_queue=g_list_delete_link(thumb_queue,listElement);
       return TRUE;
    }
-   
+
+   if (rfmFlags->rfm_thumbJobs==TRUE) { /* Check for running thumbnail processes - only 1 instance at a time */
+      return TRUE;
+   }
+
    gtk_tree_model_get_iter_from_string(GTK_TREE_MODEL(store), &iter, c_iter);
    gtk_tree_model_get (GTK_TREE_MODEL(store), &iter,
                        COL_PATH, &path,
@@ -646,21 +650,18 @@ static gboolean gen_thumbnails(RFM_flags *rfmFlags)
                        -1);
 
    /* Try internal thumbnail generator */
-   if (internal_thumbnailer(path, mime_root, mime_sub_type, mtime_file, (gchar*)listElement->data)==TRUE)
-      g_free(listElement->data);
-   else {
-      if (rfmFlags->rfm_thumbJobs==FALSE) { /* Check for running thumbnail processes - only 1 instance at a time */
-         external_thumbnailer(path, mime_root, mime_sub_type, rfmFlags, (gchar*)listElement->data);
-         g_free(listElement->data);
-      }
-      else  /* If previous job still running, put this one to end and try later */
-         thumb_queue=g_list_append(thumb_queue,listElement->data);
-   }
+   if (! internal_thumbnailer(path, mime_root, mime_sub_type, mtime_file, (gchar*)listElement->data))
+      external_thumbnailer(path, mime_root, mime_sub_type, rfmFlags, (gchar*)listElement->data);
+
    g_free(path);
    g_free(mime_root);
    g_free(mime_sub_type);
+   g_free(listElement->data);
    thumb_queue=g_list_delete_link(thumb_queue,listElement);
-
+   if (thumb_queue==NULL) { /* End of list */
+      gtk_widget_set_sensitive(GTK_WIDGET(stop_button),FALSE);
+      return FALSE;
+   }
    return TRUE;
 }
 
@@ -695,7 +696,7 @@ static void load_thumbnail(GtkTreeIter *iter)
       pixbuf = gdk_pixbuf_new_from_file(thumb_path, NULL);
       if (pixbuf != NULL) {
          tmp=gdk_pixbuf_get_option(pixbuf, "tEXt::Thumb::MTime");
-         if (tmp!=NULL) mtime_thumb=atol(tmp);
+         if (tmp!=NULL) mtime_thumb=g_ascii_strtoll(tmp, NULL, 10); /* Convert to gint64 */
          if (mtime_file!=mtime_thumb) {
             /* Thumbnail exists but is out of date - regenerate; inotify will update */
             g_object_unref(pixbuf);
@@ -779,7 +780,7 @@ static void add_item(const gchar *name, time_t parent_mtime)
    gchar *mime_sub_type=NULL;
    struct stat file_info;
    struct stat link_info;
-   gint64 file_mtime=0;
+   time_t file_mtime=0;
    gchar *utf8_display_name=NULL;
    GdkPixbuf *pixbuf=NULL;
    gchar *path, *display_name;
@@ -795,11 +796,13 @@ static void add_item(const gchar *name, time_t parent_mtime)
 
    if (stat(path, &file_info)==0) {
       is_dir=(gboolean)S_ISDIR(file_info.st_mode);
-      file_mtime=(gint64)file_info.st_mtime;
+      file_mtime=file_info.st_mtime;
    }
+   else perror("add_item(): stat failed");
 
    if (lstat(path, &link_info)==0)
       is_symlink=(gboolean)S_ISLNK(link_info.st_mode);
+   else perror("add_item(): lstat failed");
 
    utf8_display_name=g_filename_to_utf8(name, -1, NULL, NULL, NULL);
    if (file_mtime > parent_mtime)
@@ -875,7 +878,7 @@ static void add_item(const gchar *name, time_t parent_mtime)
                        COL_MIME_ROOT, mime_root,
                        COL_MIME_SUB, mime_sub_type,
                        COL_IS_SYMLINK, is_symlink,
-                       COL_MTIME, file_mtime,
+                       COL_MTIME, (gint64)file_mtime, /* 64bit integer is enough to hold time_t: try  echo | gcc -E -xc -include 'time.h' - | grep time_t */
                        -1);
 
    g_free(path);
@@ -1121,7 +1124,7 @@ static void stop_clicked(GtkToolItem *item, gpointer user_data)
    reset_thumb_job_queue();
 }
 
-static void refresh_clicked(GtkToolItem *item, GdkEventButton *event, gpointer user_data)
+static void refresh_other(GtkToolItem *item, GdkEventButton *event, gpointer user_data)
 {
    if (event->button==3) {
       if (gtk_tree_sortable_get_sort_column_id(GTK_TREE_SORTABLE(store),NULL,NULL)==FALSE)
@@ -1130,7 +1133,13 @@ static void refresh_clicked(GtkToolItem *item, GdkEventButton *event, gpointer u
          gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store),
                                               GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID,
                                               GTK_SORT_ASCENDING);
+      refresh_mount_points();
+      fill_store();
    }
+}
+
+static void refresh_clicked(GtkToolItem *item, gpointer user_data)
+{
    refresh_mount_points();
    fill_store();
 }
@@ -1285,7 +1294,6 @@ static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context,
          }
 
          src_path=g_filename_from_uri(uri, &drop_host, NULL);
-         
          if (src_path==NULL) {
             data_ok=FALSE;
             break;
@@ -1316,6 +1324,7 @@ static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context,
          gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->copy),TRUE);
       if (src_actions&GDK_ACTION_MOVE)
          gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->move),TRUE);
+
       gtk_menu_popup(GTK_MENU(dndMenu->menu), NULL, NULL, NULL, NULL, 0, time);
    }
 }
@@ -1835,7 +1844,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->refresh);
    refresh_button=gtk_tool_button_new(buttonImage,"Refresh");
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), refresh_button, -1);
-   g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_clicked), NULL);
+   g_signal_connect(refresh_button, "clicked", G_CALLBACK(refresh_clicked), NULL);
+   g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), NULL);
    
    for(i=0;i<G_N_ELEMENTS(tool_buttons);i++) {
 
@@ -1896,13 +1906,13 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, GtkWidget *rootMenu)
    return icon_view;
 }
 
-static gboolean update_thumbnail(gchar *key)
+static void update_thumbnail(gchar *key)
 {
    gchar *c_iter=NULL;
    GtkTreeIter iter;
    GdkPixbuf *pixbuf=NULL;
 
-   c_iter=g_hash_table_lookup(thumb_hash,key);
+   c_iter=g_hash_table_lookup(thumb_hash,key);  /* Don't free c_iter! */
    if (c_iter != NULL) {
       gtk_tree_model_get_iter_from_string(GTK_TREE_MODEL(store), &iter, c_iter);
       pixbuf=gdk_pixbuf_new_from_file(key, NULL);
@@ -1911,8 +1921,6 @@ static gboolean update_thumbnail(gchar *key)
          g_object_unref(pixbuf);
       }
    }
-   g_free(key); /* Don't free c_iter! */
-   return FALSE;
 }
 
 static void insert_item(gchar *name, gboolean is_dir)
@@ -1954,7 +1962,7 @@ static void insert_item(gchar *name, gboolean is_dir)
                        COL_MIME_ROOT, mime_root,
                        COL_MIME_SUB, mime_sub_type,
                        COL_IS_SYMLINK, is_symlink,
-                       COL_MTIME, (gint64)time(NULL),
+                       COL_MTIME, (gint64)time(NULL), /* time() returns a type time_t */
                        -1);
    g_free(path);
    g_free(display_name);
@@ -1984,7 +1992,8 @@ static gboolean inotify_handler(GIOChannel *source, GIOCondition condition, gpoi
          if (event->wd==thumbnail_wd) {
             /* Update thumbnails in the current view */
             key=g_strdup_printf("%s/%s",thumb_dir,event->name);
-            g_idle_add((GSourceFunc)update_thumbnail,key);
+            update_thumbnail(key);
+            g_free(key);
          }
          else {
             if (event->mask & IN_CREATE)
@@ -2120,7 +2129,7 @@ static int setup(char *initDir)
    #endif
    gtk_container_add(GTK_CONTAINER(window), rfm_main_box);
 
-    host_name=g_get_host_name();
+   host_name=g_get_host_name();
    home_path=g_strdup(g_get_home_dir());
    thumb_dir=g_strdup_printf("%s/.thumbnails/normal",home_path);
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
@@ -2134,6 +2143,9 @@ static int setup(char *initDir)
          do_thumbs=0;
       }
    }
+   
+   /* pid is used to generate a unique temporary thumbnail name */
+   rfm_pid=(long)getpid();  /* Return type is pid_t, check echo | gcc -E -xc -include 'unistd.h' - | grep pid_t */
    
    init_mount_points();   
    init_inotify();
