@@ -17,7 +17,7 @@ show_info() {
 	printf "\tGroup : <i>$4</i>\n"
 	printf "\tSize  : <i>$5</i>\n"
 	printf "\tDate  : <i>$6</i>\n"
-   printf "\tmtime : <i>$7</i>\n"
+        printf "\tmtime : <i>$7</i>\n"
 }
 
 if [ $# -eq 1 ]; then

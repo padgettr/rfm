@@ -14,11 +14,7 @@ The aim of the project was:
 
 Requirements
 ------------
-Requires gtk3, at least 3.10. Tested on Arch linux (http://www.archlinux.org) only.
-OR
-edit the Makefile and uncomment USE_GTK2 = True. Tested with gtk+-2.24.23, following lib versions:
-gtk-x11-2.0, gdk-x11-2.0, pangocairo-1.0, latk-1.0, gdk_pixbuf-2.0, gio-2.0, pangoft2-1.0, pango-1.0, gobject-2.0, glib-2.0
-
+Requires gtk3, at least 3.22. Tested on Arch linux (http://www.archlinux.org).
 
 Installation
 ------------
@@ -143,8 +139,9 @@ Info    - Show running background tasks.
 
 Tool bar buttons can be added using config.h. See config.h for further details.
 
-NOTE: a right click on the refresh button will toggle the sort mode from
-      alphabetical order to file modified time order (latest files first) before refreshing. 
+NOTE: a right click on the refresh button will switch the sort mode from
+      alphabetical order to file modified time order (latest files first) before refreshing.
+      This is a toggle switch: right click again to restore the original order.
 
 Icon Themes
 -----------

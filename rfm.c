@@ -64,6 +64,7 @@ typedef struct {
    GtkWidget *menu;
    GtkWidget *copy;
    GtkWidget *move;
+   GdkEvent *drop_event; /* The latest drop event */
 } RFM_dndMenu;
 
 typedef struct {
@@ -394,12 +395,9 @@ static GtkWidget *show_text(GtkTextBuffer* buffer, gchar *title, gint type)
    gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_NONE);
    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
-
-   #ifndef RFM_USE_GTK2
    gtk_text_view_set_monospace(GTK_TEXT_VIEW(text_view), TRUE);
    gtk_widget_set_hexpand(sw, TRUE);
    gtk_widget_set_vexpand(sw, TRUE);
-   #endif
 
    content_area=gtk_dialog_get_content_area(GTK_DIALOG(dialog));
    gtk_container_add(GTK_CONTAINER(content_area), sw);
@@ -1230,7 +1228,7 @@ static void dnd_menu_cp_mv(GtkWidget *menuitem, gpointer doCopy)
    cp_mv_file(doCopy);
 }
 
-/* Receive data from drag initiator after requesting send from drag_drop_handl */
+/* Receive data after requesting send from drag_drop_handl */
 static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, GtkSelectionData *selection_data, guint target_type, guint time, RFM_dndMenu *dndMenu)
 {
    char *uri_list=NULL;
@@ -1324,8 +1322,9 @@ static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context,
          gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->copy),TRUE);
       if (src_actions&GDK_ACTION_MOVE)
          gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->move),TRUE);
-
-      gtk_menu_popup(GTK_MENU(dndMenu->menu), NULL, NULL, NULL, NULL, 0, time);
+      
+      /* this doesn't work in weston: but using 'NULL' for the event does! */
+      gtk_menu_popup_at_pointer(GTK_MENU(dndMenu->menu), dndMenu->drop_event);
    }
 }
 
@@ -1362,7 +1361,7 @@ static gboolean drag_motion_handl(GtkWidget *widget, GdkDragContext *context, gi
 }
 
 /* Called when a drop occurs on iconview: then request data from drag initiator */
-static gboolean drag_drop_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, guint time, gpointer user_data)
+static gboolean drag_drop_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, guint time, RFM_dndMenu *dndMenu)
 {
    GdkAtom target_type;
 
@@ -1372,7 +1371,11 @@ static gboolean drag_drop_handl(GtkWidget *widget, GdkDragContext *context, gint
       gtk_drag_finish(context,FALSE,FALSE,time);
       return FALSE; /* Can't handle incoming data */
    }
-   gtk_drag_get_data(widget,context,target_type,time);
+   if (dndMenu->drop_event!=NULL)
+      gdk_event_free(dndMenu->drop_event);
+   dndMenu->drop_event=gtk_get_current_event();
+   gtk_drag_get_data(widget, context, target_type, time); /* Call back: drag_data_received_handl() above */
+
    return TRUE;
 }
 
@@ -1635,7 +1638,7 @@ RFM_fileMenu *setup_file_menu(void)
    return fileMenu;
 }
 
-static void popup_file_menu(GdkEventButton *event, gboolean single_file, RFM_fileMenu *fileMenu)
+static void popup_file_menu(GdkEvent *event, gboolean single_file, RFM_fileMenu *fileMenu)
 {
    int showMenuItem[G_N_ELEMENTS(run_actions)]={0};
    gchar *path;
@@ -1695,26 +1698,27 @@ static void popup_file_menu(GdkEventButton *event, gboolean single_file, RFM_fil
          gtk_widget_hide(fileMenu->action[i]);
    }
 
-   gtk_menu_popup(GTK_MENU(fileMenu->menu), NULL, NULL, NULL, NULL, event->button, event->time);
+   gtk_menu_popup_at_pointer(GTK_MENU(fileMenu->menu), event);
 }   
 
 RFM_dndMenu *setup_dnd_menu(void)
 {
    RFM_dndMenu *dndMenu=NULL;
-   if(!(dndMenu = calloc(1, sizeof(RFM_dndMenu))))
+   if(!(dndMenu=calloc(1, sizeof(RFM_dndMenu))))
       return NULL;
 
-   dndMenu->menu = gtk_menu_new ();
+   dndMenu->drop_event=NULL;
+   dndMenu->menu=gtk_menu_new ();
 
-   dndMenu->copy = gtk_menu_item_new_with_label ("Copy");
-   gtk_widget_show (dndMenu->copy);
-   gtk_menu_shell_append (GTK_MENU_SHELL (dndMenu->menu),dndMenu->copy);
-   g_signal_connect (dndMenu->copy, "activate", G_CALLBACK (dnd_menu_cp_mv), dndMenu->copy);
+   dndMenu->copy=gtk_menu_item_new_with_label("Copy");
+   gtk_widget_show(dndMenu->copy);
+   gtk_menu_shell_append(GTK_MENU_SHELL (dndMenu->menu),dndMenu->copy);
+   g_signal_connect(dndMenu->copy, "activate", G_CALLBACK (dnd_menu_cp_mv), dndMenu->copy);
 
-   dndMenu->move = gtk_menu_item_new_with_label ("Move");
-   gtk_widget_show (dndMenu->move);
-   gtk_menu_shell_append (GTK_MENU_SHELL (dndMenu->menu), dndMenu->move);
-   g_signal_connect (dndMenu->move, "activate", G_CALLBACK (dnd_menu_cp_mv), NULL);
+   dndMenu->move=gtk_menu_item_new_with_label("Move");
+   gtk_widget_show(dndMenu->move);
+   gtk_menu_shell_append(GTK_MENU_SHELL (dndMenu->menu), dndMenu->move);
+   g_signal_connect(dndMenu->move, "activate", G_CALLBACK (dnd_menu_cp_mv), NULL);
    return dndMenu;
 }
 
@@ -1773,7 +1777,7 @@ static gboolean on_button_press(GtkWidget *widget, GdkEvent *event, GtkWidget *r
       if (!tree_path) {
          if (eb->button == 3) {
             gtk_icon_view_unselect_all(GTK_ICON_VIEW(widget));
-            gtk_menu_popup(GTK_MENU(rootMenu), NULL, NULL, NULL, NULL, eb->button, eb->time);
+            gtk_menu_popup_at_pointer(GTK_MENU(rootMenu), event);
             ret_val=TRUE;
          }
       }
@@ -1783,11 +1787,7 @@ static gboolean on_button_press(GtkWidget *widget, GdkEvent *event, GtkWidget *r
             /* Custom DnD start if multiple items selected */
             if (gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget),tree_path) && first->next!=NULL) {
                gtk_icon_view_unset_model_drag_source(GTK_ICON_VIEW(widget));
-               #ifndef RFM_USE_GTK2
                gtk_drag_begin_with_coordinates(widget,target_list,DND_ACTION_MASK,1,event,eb->x,eb->y);
-               #else
-               gtk_drag_begin(widget,target_list,DND_ACTION_MASK,1,event);
-               #endif
                ret_val=TRUE;
             }
             else
@@ -1795,12 +1795,12 @@ static gboolean on_button_press(GtkWidget *widget, GdkEvent *event, GtkWidget *r
          }
          else if (eb->button == 3) {
             if (gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget),tree_path) && first->next!=NULL)
-               popup_file_menu(eb, FALSE, fileMenu);
+               popup_file_menu(event, FALSE, fileMenu);
             else {
                gtk_icon_view_unselect_all(GTK_ICON_VIEW(widget));
                /* Select the path and trigger selection_changed() to update selection_list */
                gtk_icon_view_select_path(GTK_ICON_VIEW(widget), tree_path);
-               popup_file_menu(eb, TRUE, fileMenu);
+               popup_file_menu(event, TRUE, fileMenu);
             }
             ret_val=TRUE;
          }
@@ -1882,9 +1882,6 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, GtkWidget *rootMenu)
    gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(icon_view), GTK_SELECTION_MULTIPLE);
    gtk_icon_view_set_markup_column(GTK_ICON_VIEW (icon_view), COL_DISPLAY_NAME);
    gtk_icon_view_set_pixbuf_column (GTK_ICON_VIEW (icon_view), COL_PIXBUF);
-   #ifdef RFM_USE_GTK2
-   gtk_icon_view_set_item_width (GTK_ICON_VIEW(icon_view),RFM_THUMBNAIL_SIZE+16);
-   #endif
    gtk_drag_dest_set (GTK_WIDGET (icon_view), 0, target_entry, N_TARGETS, DND_ACTION_MASK);
 
    /* Source DnD signals */
@@ -1893,7 +1890,7 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, GtkWidget *rootMenu)
    g_signal_connect (icon_view, "drag-end", G_CALLBACK (drag_local_handl), rfmFlags);
 
    /* Destination DnD signals */
-   g_signal_connect (icon_view, "drag-drop", G_CALLBACK (drag_drop_handl), NULL);
+   g_signal_connect (icon_view, "drag-drop", G_CALLBACK (drag_drop_handl), dndMenu);
    g_signal_connect (icon_view, "drag-data-received", G_CALLBACK (drag_data_received_handl), dndMenu);
    g_signal_connect (icon_view, "drag-motion", G_CALLBACK (drag_motion_handl), rfmFlags);
 
@@ -2122,11 +2119,8 @@ static int setup(char *initDir)
    #ifndef RFM_SHOW_WINDOW_DECORATIONS
    gtk_window_set_decorated(GTK_WINDOW(window),FALSE);
    #endif
-   #ifndef RFM_USE_GTK2
    rfm_main_box=gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-   #else
-   rfm_main_box=gtk_vbox_new(FALSE,0);
-   #endif
+
    gtk_container_add(GTK_CONTAINER(window), rfm_main_box);
 
    host_name=g_get_host_name();

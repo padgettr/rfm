@@ -80,4 +80,11 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
 1.5.9    Correct bug with last change: hidden items (starting with '.') were shown, alter insert_item(). Added ability to search for a sub string in mime sub type: some MS files have long mime types, but probably only want to match e.g. 'vnd.ms-excel' for all excel files. In config.h, if sub type is prefixed with a / then the following characters will be matched anywhere within the files mime sub-type. Uses strstr() added to item_activated() and popup_file_menu().
 1.5.10   Don't use g_idle_add for icon updates via inotify - too slow. Fix problem with refresh button: needed a double click. This was due to connecting to the button press event, as required for the right click, but left click was blocked. Fix by connecting to 'click' event as well.
          Add CPPFLAGS += -D_FILE_OFFSET_BITS=64 to makefile, otherwise stat sometimes fails on 32 bit systems.
-         
+
+***** Start version 1.6 due to changes with menu popup    *****
+***** GTK 3.22 or later required; GTK2 support removed:   *****
+***** 1.5.10 is the last version with GTK2 compatibility  *****
+
+1.6.0   Use gtk_menu_popup_at_pointer() instead of gtk_menu_popup(). NOTE: this breaks compatibility with GTK2. Added GdkEvent *drop_event to RFM_dndMenu: this contains the drop event. Note that using NULL for the event in gtk_menu_popup_at_pointer() for DnD works, but warnings issued. Using NULL works in weston, but the menu is in the wrong place. Using the drop event doesn't work in wayland, silently fails and no menu is displayed.
+
+

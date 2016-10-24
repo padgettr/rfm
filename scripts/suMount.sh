@@ -17,7 +17,8 @@
 #   10-08-2010: Added -w option for grep to match whole words only.
 #   03-08-2011: Added unmount option -u & some error checking to exit with proper exit codes.
 #   28-08-2014: Correct a small bug in exit codes for cifs handling: zero was returned if cifs umount failed.
-#   15-02-2015: Changed for use with wayland: use vte-2.91 for password entry instead of xterm
+#   15-02-2015: Changed for use with wayland
+#   10-06-2016: Add support for unmounting simple-mtpfs -> read /proc/mounts if path not found in fstab; don't exit on fail, try to umount anyway.
 
 if [ $# -eq 0 ]; then
 	echo "Usage: $0 [-u] <mount point>"
@@ -32,9 +33,9 @@ fi
 
 mountDir="${1%/}"   # Strip off any trailing /
 fsType=$(grep -w -F "$mountDir" /etc/fstab |  awk '{print $3 }')
-if [ $? -gt 0 ]; then
-	echo "$mountDir not found in fstab" >/dev/stderr 2>&1
-	exit 1
+if [ -z "$fsType" ]; then
+   fsType=$(grep -w -F "$mountDir" /proc/mounts |  awk '{print $3 }')
+   uFlag=1
 fi
 
 if [ "$fsType" = "cifs" ]; then
@@ -54,6 +55,13 @@ if [ "$fsType" = "cifs" ]; then
 		mount | grep -w "$mountDir" >/dev/null 2>&1
 	fi
 	exit $?
+fi
+
+if [ "$fsType" = "fuse.simple-mtpfs" ]; then
+   if [ $uFlag -eq 1 ]; then
+      fusermount -u "$mountDir"
+   fi
+   exit $?
 fi
 
 if [ $uFlag -eq 1 ]; then
