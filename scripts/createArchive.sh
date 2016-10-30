@@ -12,20 +12,28 @@
 # was moved to /path/to/dir/.aType, due to using $1 directly. Modified to
 # use $path/$filename.$aType instead.
 #
+# 27-10-2016: For security reasons, don't create archive if $tmpDirName exists
+#             Added random code to directory name
+#
+pname=$(basename "$0")
 if [ ! -d "$1" ]; then
-   xmessage "Directory expected!"
+   xmessage "$pname: Directory expected!"
    exit 1
 fi
 
-pname=$(basename "$0")
-
-tmpDirName="/tmp/createArchive.$$"
+rndCode=$(head -10 /dev/urandom | md5sum | cut -d " " -f 1)
+tmpDirName="/tmp/createArchive.$$.$rndCode"
 filename=$(basename "$1")
 path=$(dirname "$1")
 aType="tar.xz"
 
-mkdir $tmpDirName
-chmod 700 $tmpDirName
+if [ -e "$tmpDirName" ]; then
+	xmessage "$pname: $tmpDirName exists!"
+   exit 1
+fi
+
+mkdir "$tmpDirName"
+chmod 700 "$tmpDirName"
 
 tar -C "$path" -vcJf "$tmpDirName/tmp.$aType" "$filename" 2>&1 | xmessage -file -
 mv "$tmpDirName/tmp.$aType" "$path/$filename.$aType"
@@ -34,4 +42,4 @@ if [ $? -gt 0 ]; then
 	xmessage "$pname: Created archive $HOME/$filename.$aType" ||
 	xmessage "$pname: ERROR: Archive created: $tmpDirName, but move failed."
 fi
-rm -rf $tmpDirName
+rm -rf "$tmpDirName"
