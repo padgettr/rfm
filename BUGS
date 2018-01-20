@@ -1,4 +1,7 @@
-This is a list of bugs during early development, now fixed. Later changes are recorded in ChangeLog.
+All versions to 1.6:
+BUG: There must be at least one external thumbnailer defined; work-around: leave the application/dicom in place, even if the suggested script doesn't exist.
+FIXED: version 1.7: Use a different model for thumbnailing - include the internal thumbnailer in the thumbnailer array so there is always one entry.
+Below is a list of bugs during early development, now fixed. Later changes are recorded in ChangeLog.
 
 Version 1.2:
 BUG: Child process (cp / mv / rm in particular) hangs if many errors are encountered. Due to pipe buffer being full.

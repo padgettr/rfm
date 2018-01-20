@@ -86,5 +86,18 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
 ***** 1.5.10 is the last version with GTK2 compatibility  *****
 
 1.6.0   Use gtk_menu_popup_at_pointer() instead of gtk_menu_popup(). NOTE: this breaks compatibility with GTK2. Added GdkEvent *drop_event to RFM_dndMenu: this contains the drop event. Note that using NULL for the event in gtk_menu_popup_at_pointer() for DnD works, but warnings issued. Using NULL works in weston, but the menu is in the wrong place. Using the drop event doesn't work in wayland, silently fails and no menu is displayed.
+1.6.1   If stat fails (e.g. broken symlink) modify icon with a broken image tag. Added new icon into icons.h and modify add_item(). Also got rid of hash store for symlink icons.
+1.6.2   If an external thumbnailer generates temporary files inside the current rfm parent directory, but fails, the failure is not registered in the rfm code. Although the file is removed from the thumbnail queue, because a temporary file was created in the current parent dir, rfm triggers a directory re-read which resets the thumb queue and the whole process starts again! The problem here was imagemagick's convert function, which seems to generate a temporary file in the current directory. Altered code in external_thumbnailer() to always exec thumbnail code in the thumbnail directory (which is assumed to exist).
+1.6.3   More changes to thumbnailing: tidy up gen_thumbnails(), don't add inotify watch on thumbnail dir if do_thumbs!=1, add rfm_thumbQueue to RFM_flags to store main loop source ID for thumbnail queue. Consolidate all thumbnail stop functions to reset_thumb_job_queue() and explicitly remove and existing thumb queue idle sources.
+        Correct a bug: If a new item is detected by inotify and added to the tree model, this was automatically sorted. However, thumbnailing was not re-initialised, so thumb_hash was out of sync with new model iters after sorting, resulting in incorrect files being thumbnailed under some circumstances. Add new RFM_flag rfm_sortColumn to store the current sort column. The sort column is now selected in fill_store(). Sorting is disabled for inotify updates, new items appear at the end of the model.
+1.6.4   Alter the behaviour of the file menu if multiple files are selected: Add struct RFM_rootMenu and set as an object (as for the other menus). Remove selection_changed(); obtain selection list on click. Altered popup_file_menu(): if multiple files are selected with the same mime root, but different mime sub types, only show menu items appropriate to all types of mime root. If the files are completely different mime types, only show menu items suitable for any file type.
+        Cleanups - remove GLists for files and obtain selections lists as required. Remove n_parent_items global variable - not required.
+        Revert '/' patern matching in 1.5.9 - no longer required.
+        Correct bug where RFM_Thumbnailers thumbnailers had to have at least one entry: now internal thumbnailer is that one entry and must be present!
+        Change 'anything' in config.h to '*' for matching any mime type.
+        Remove RFM_ICON_PREFIX and window decoration code - no longer required.
+        Use GUnixMountMonitor to monitor mounts instead of opening a file descriptor on /proc/mounts. Investigated using GIO for mount handling, but decided to stick with POSIX access.
 
+***** Start version 1.7 due to changes in config.h *****
 
+1.7.0   Initial version 12-01-2018

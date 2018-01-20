@@ -1,6 +1,6 @@
 # Makefile for RFM - Rod's File Manager
 
-VERSION = 1.6.0
+VERSION = 1.7
 
 GTK_VERSION = gtk+-3.0
 CPPFLAGS =

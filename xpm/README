@@ -1,3 +1,6 @@
 These icons are from the Tango Desktop Project: http://tango.freedesktop.org/
 
 "The Tango base icon theme is released to the Public Domain. The palette is in public domain. Developers, feel free to ship it along with your application."
+
+Use imagemagick (https://www.imagemagick.org):
+convert icon.png icon.xpm

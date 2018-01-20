@@ -5,7 +5,7 @@ Introduction
 ------------
 rfm is a basic filemanager for use with dwm (http://dwm.suckless.org/) on linux.
 The aim of the project was:
-   * good thumbnailing capabilities
+   * flexible thumbnailing capabilities
    * file handling by mime type
    * use drag and drop for file operations
    * show status of mount points defined in fstab
@@ -62,10 +62,10 @@ static const char *f_cp[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
 static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 
 static RFM_RunActions run_actions[] = {
-   /* name         mime root         mime sub type            argument          run options */
-   { "Copy",       "anything",      "anything",               f_cp,             RFM_EXEC_INTERNAL },   
-   { "Move",       "anything",      "anything",               f_mv,             RFM_EXEC_INTERNAL },   
-   { "Delete",     "anything",      "anything",               f_rm,             RFM_EXEC_INTERNAL },
+   /* name         mime root     mime sub type      argument          run options */
+   { "Copy",       "*",          "*",               f_cp,             RFM_EXEC_INTERNAL },   
+   { "Move",       "*",          "*",               f_mv,             RFM_EXEC_INTERNAL },   
+   { "Delete",     "*",          "*",               f_rm,             RFM_EXEC_INTERNAL },
 }
 
 The argument is a pointer to an array containing the details of the command to run in linux execv() style; from
@@ -124,9 +124,14 @@ of the same name. Otherwise, the operation will be performed without prompting.
 Thumbnails
 ----------
 GTK+ has built in imaging for many different file types; however, you can also define your own thumbnailer
-for specific mime types in config.h. An example is given in config.def.h for DICOM medical imaging files.
-In this case it calls a script which generates a thumbnail using the DICOM toolkit dcmtk, and then converts
-the resulting file to a png with the appropriate header using ImageMagick.
+for specific mime types in config.h. The first entry in RFM_Thumbnailers is for the internal GTK based
+thumbnailer; this must be present. Additional thumbnailers may be defined: an example is given in
+config.def.h for DICOM medical imaging files. In this case it calls a script which generates a thumbnail
+using the DICOM toolkit dcmtk, and then converts the resulting file to a png with the appropriate header
+using ImageMagick.
+
+NOTE: EXTERNAL THUMBNAILERS MUST NOT MODIFY THE CURRENT RFM PARENT DIRECTORY WHEN GENERATING IMAGES!
+      Any temprorary image files should be stored elsewhere.
 
 Tool bar
 --------
@@ -137,7 +142,7 @@ Stop    - Stop the current thumbnailing operation
 Refresh - Left Click: Refresh mounts list / current view; Right Click: to refresh and toggle display order
 Info    - Show running background tasks.
 
-Tool bar buttons can be added using config.h. See config.h for further details.
+Tool bar buttons can be added using config.h. See config.def.h for further details.
 
 NOTE: a right click on the refresh button will switch the sort mode from
       alphabetical order to file modified time order (latest files first) before refreshing.
@@ -173,13 +178,6 @@ Edit config.h and add e.g.
 	#define RFM_ICON_THEME "Tango"
    
 This will force rfm to use the Tango icon theme, if installed.
-
-When using certain icon themes, in order to get the full range of mime icons, you may need to add
-
-	#define RFM_ICON_PREFIX "gnome-mime"
-
-to your config.h. It is recommended to avoid this; for example, the elementary and oxygen (kde) icon themes
-have a good selection of mime type icons and does not require an icon_prefix to use them all.
 
 Icon sizes are controlled by:
 	#define RFM_TOOL_SIZE 22
@@ -224,14 +222,14 @@ You can add the following to config.h in the approprate places to open an object
 with the default XDG app:
 static const char *xdg_open[]  = { "/usr/bin/xdg-open", NULL };
 ...
-   { "xdg-open",	"anything",	"anything",	xdg_open,	RFM_EXEC_NONE }
+   { "xdg-open",        "*",     "*",  xdg_open,  RFM_EXEC_NONE }
 
 This will cause xdg-open to appear in the action menu for every object.
 
 Users of dwm might prefer to add:
 
    static const char *open_with[]  = { "/usr/local/bin/open_with_dmenu.sh", NULL };
-   { "Open with...", "anything",      "anything",               open_with,        RFM_EXEC_NONE },
+   { "Open with...",    "*",     "*",  open_with,  RFM_EXEC_NONE },
 
 as a catch all to use dmenu for opening files. The helper script open_with_dmenu.sh is included in the scripts dir.
 
@@ -255,12 +253,9 @@ Summary Notes
       * If pango markup is used, you need to escape any markup characters in filename etc, i.e. use
         something like sed 's/\&/\&amp\;/g; s/</\&lt\;/g; s/>/\&gt\;/g' to  replace & with &amp; < with &lt;
         and > with &gt;
-		* Valid UTF-8 characters are required in any output.
-		* If the number of output chars (stdin / stderr) to be displayed exceeds RFM_MX_MSGBOX_CHARS
+      * Valid UTF-8 characters are required in any output.
+      * If the number of output chars (stdin / stderr) to be displayed exceeds RFM_MX_MSGBOX_CHARS
         the output will always be shown in a scrollable text window regardless of the run option setting.
-7. GTK3 3.13 draws client window decorations on dwm gtk windows. The default for RFM (from version 1.3.10)
-	is not to show any window decorations. If you want to show window decorations (e.g. in a non-tiling window
-	manager) add #define RFM_SHOW_WINDOW_DECORATIONS to config.h 
 
 Aknowledgements / references
 ----------------------------
