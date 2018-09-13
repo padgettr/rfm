@@ -19,16 +19,26 @@
 #   28-08-2014: Correct a small bug in exit codes for cifs handling: zero was returned if cifs umount failed.
 #   15-02-2015: Changed for use with wayland
 #   10-06-2016: Add support for unmounting simple-mtpfs -> read /proc/mounts if path not found in fstab; don't exit on fail, try to umount anyway.
+#   14-01-2017: Changed mtpfs support to umount any fuse filesystem (tested with sshfs)
+#   03-03-2018: Added support for sshfs; remove wayland stuff and use xterm
+#               note if the shell is not specified as interactive (-i option to bash) filesystem is unmounted when the Dialog shell is closed.
+#               This happens because sshfs receives the HUP signal when xterm exits; can be prevented by using nohup command instead of using bash -i -c,
+#               but this will redirect stdout to a file.
 
 if [ $# -eq 0 ]; then
-	echo "Usage: $0 [-u] <mount point>"
-	exit 1
+   echo "Usage: $0 [-u] <mount point>"
+   exit 1
+fi
+
+if [ -z $DISPLAY ]; then
+   echo "X DISPLAY unset!"
+   exit 1
 fi
 
 uFlag=0
 if [ "$1" = "-u" ]; then
-        uFlag=1
-        shift 1
+   uFlag=1
+   shift 1
 fi
 
 mountDir="${1%/}"   # Strip off any trailing /
@@ -39,25 +49,32 @@ if [ -z "$fsType" ]; then
 fi
 
 if [ "$fsType" = "cifs" ]; then
-	if [ $uFlag -eq 1 ]; then
-		sudo umount "$mountDir"
-	else
-		if [ -z $DISPLAY ]; then
-			vte-2.91 --no-toolbar \
-                	      --geometry 80x5 \
-                	      -c "sudo mount $mountDir" > /dev/null 2>&1
-		else
-	                xterm -class Dialog \
-	                      -geometry 80x5 \
-	                      -title "Mount: Password" \
-	                      -e "sudo mount $OPTS $mountDir || { echo 'Press <return> to continue'; read -r $STUFF; }"
-		fi
-		mount | grep -w "$mountDir" >/dev/null 2>&1
-	fi
-	exit $?
+   if [ $uFlag -eq 1 ]; then
+      sudo umount "$mountDir"
+   else
+      xterm -class Dialog \
+            -geometry 80x5 \
+            -title "Mount: Password" \
+            -e "sudo mount $mountDir || { echo 'Press <return> to continue'; read -r $STUFF; }"
+      mount | grep -w "$mountDir" >/dev/null 2>&1
+   fi
+   exit $?
 fi
 
-if [ "$fsType" = "fuse.simple-mtpfs" ]; then
+if [ "$fsType" = "sshfs" ]; then
+   if [ $uFlag -eq 1 ]; then
+      fusermount3 -u "$mountDir"
+   else
+      xterm -class Dialog \
+            -geometry 80x5 \
+            -title "Mount: Password" \
+            -e bash --norc -i -c "mount $mountDir || { echo 'Press <return> to continue'; read -r $STUFF; }"
+      mount | grep -w "$mountDir" >/dev/null 2>&1
+   fi
+   exit $?
+fi
+
+if [ "${fsType%.*}" = "fuse" ]; then
    if [ $uFlag -eq 1 ]; then
       fusermount -u "$mountDir"
    fi
@@ -65,7 +82,7 @@ if [ "$fsType" = "fuse.simple-mtpfs" ]; then
 fi
 
 if [ $uFlag -eq 1 ]; then
-	umount "$mountDir"
+   umount "$mountDir"
 else
-	mount "$mountDir"
+   mount "$mountDir"
 fi

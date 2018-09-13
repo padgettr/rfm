@@ -32,7 +32,8 @@ static const char *f_cp[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
 static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 
 /* Run action commands: called as run_action <list of paths to selected files> */
-static const char *play_video[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x15", "-e", "/usr/bin/mplayer", "-msgcolor", NULL };
+//static const char *play_video[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x15", "-e", "/usr/bin/mplayer", "-msgcolor", NULL };
+static const char *play_video[]  = { "/usr/local/bin/xomxplayer", NULL };
 static const char *play_audio[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x12", "-e", "/usr/bin/play", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { "/usr/local/bin/nedit", NULL };
@@ -86,8 +87,8 @@ static RFM_RunActions run_actions[] = {
    { "Delete",       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
-   { "rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
    { "View",         "image",          "*",                    show_image,       RFM_EXEC_NONE },
+   { "rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,   RFM_EXEC_TEXT },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document", soffice, RFM_EXEC_TEXT },
