@@ -1,12 +1,13 @@
 #!/bin/bash
-# Mount/Unmount script for sudo mounts
-# If the mount is of type CIFS, execute mount from xterm in case there are
-# passwords to be entered. Otherwise, just run mount.
-# Requires sudo and an entry in the sudoers file:
-# visudo
+# Mount/Unmount script for rfm
+# Any passwords required are collected using xterm so that the mount utilities
+# native interface is used.
+# cifs mounts are handles through sudo:
+# Requires sudo and an entry in the sudoers file, e.g. if all cifs mounts are
+# in /smb the following can be added to sudoers file (using visudo)
+# to allow mounting and unmounting:
 # <userName> <host>=NOPASSWD:/bin/mount /smb/*
 # <userName> <host>=NOPASSWD:/bin/umount /smb/*
-
 #
 # R. Padgett (2009) <rod_padgett@hotmail.com>
 #
@@ -24,38 +25,101 @@
 #               note if the shell is not specified as interactive (-i option to bash) filesystem is unmounted when the Dialog shell is closed.
 #               This happens because sshfs receives the HUP signal when xterm exits; can be prevented by using nohup command instead of using bash -i -c,
 #               but this will redirect stdout to a file.
+#  02-04-2019: fsType: use cut to ignore comments in fstab, and alter awk command to use either space or TAB or both as delimiter
+#  24-07-2019: If the supplied mount point is a block device, use udisks2 to mount and unmount.
+#              Use $XDG_VTNR to check if user is at the terminal or logged in via network (may be ssh or remote X)
+#              Add execMountCmd() function to avoid repetition of the password dialog code
+#              Apparantly some devices need to be powered down before they can be safely removed. Add -s option to umount and power down - only applies to device paths!
+# 16-11-2019:  Allow any user to mount cifs (added user options to mount: -o user=$USER,uid=$USER,gid=users
+
+execMountCmd() {
+   if [ -z $DISPLAY ]; then
+      bash --norc -i -c "$1"
+   else
+      xterm -class Dialog \
+         -geometry 80x5 \
+         -title "Mount: Password" \
+         -e bash --norc -i -c "$1 || { echo 'Press <return> to continue'; read -r $STUFF; }"
+   fi
+}
 
 if [ $# -eq 0 ]; then
-   echo "Usage: $0 [-u] <mount point>"
+   echo "Usage: $0 [-u -s] <mount point || block device>"
+   echo "Options:"
+   echo "   -u   unmount the specified mount point or block device"
+   echo "   -s unmount and power down the specified mount point or block device"
    exit 1
 fi
 
-if [ -z $DISPLAY ]; then
-   echo "X DISPLAY unset!"
-   exit 1
-fi
-
-uFlag=0
+uFlag=0   # unmount flag
 if [ "$1" = "-u" ]; then
    uFlag=1
    shift 1
 fi
 
-mountDir="${1%/}"   # Strip off any trailing /
-fsType=$(grep -w -F "$mountDir" /etc/fstab |  awk '{print $3 }')
-if [ -z "$fsType" ]; then
-   fsType=$(grep -w -F "$mountDir" /proc/mounts |  awk '{print $3 }')
-   uFlag=1
+sFlag=0   # unmount and power down: eject / safely remove flag
+if [ "$1" = "-s" ]; then
+   sFlag=1
+   shift 1
 fi
 
+mType=$(stat -L --format=%F "$1")
+[ $? -ne 0 ] && exit 1
+
+case "$mType" in
+   "block special file")
+      mountDev="$1"
+      if [ $uFlag -eq 1 ]; then
+         /usr/bin/udisksctl unmount --no-user-interaction -b "$mountDev"
+         exit $?
+      fi
+
+      if [ $sFlag -eq 1 ]; then
+         /usr/bin/udisksctl unmount --no-user-interaction -b "$mountDev" > /dev/null 2>&1
+         if [ -z $XDG_VTNR ]; then
+            execMountCmd "/usr/bin/udisksctl power-off -b $mountDev" # NOTE: udisksctl command is detach in older versions of udisks
+         else
+            /usr/bin/udisksctl power-off --no-user-interaction -b "$mountDev"
+         fi
+         exit $?
+      fi
+
+      if [ -z $XDG_VTNR ]; then
+         execMountCmd "/usr/bin/udisksctl mount -b $mountDev"
+         /usr/bin/findmnt -m "$mountDev" > /dev/null
+      else
+         /usr/bin/udisksctl mount --no-user-interaction -b "$mountDev"
+      fi
+      exit $?
+   ;;
+
+   "directory")
+      if [ $sFlag -eq 1 ]; then
+         echo "WARNING: umount only: NOT powering device down: device path required."
+         uFlag=1
+      fi
+
+      mountDir="${1%/}"   # Strip off any trailing /
+
+      # Ignore comments, search fstab and return 3rd field (file system type)
+      fsType=$(cut -d \# -f 1 /etc/fstab | grep -w -F "$mountDir" |  awk -F "[ \t]*|[ \t]+" '{print $3}')
+      if [ -z "$fsType" ]; then
+         fsType=$(grep -w -F "$mountDir" /proc/mounts |  awk '{print $3 }')
+         uFlag=1
+      fi
+   ;;
+   *)
+      echo "File type $mType not supported for mounting"
+      exit 1;
+   ;;
+esac
+
+# A mount point was specified
 if [ "$fsType" = "cifs" ]; then
    if [ $uFlag -eq 1 ]; then
       sudo umount "$mountDir"
    else
-      xterm -class Dialog \
-            -geometry 80x5 \
-            -title "Mount: Password" \
-            -e "sudo mount $mountDir || { echo 'Press <return> to continue'; read -r $STUFF; }"
+      execMountCmd "sudo mount $mountDir -o user=$USER,uid=$USER,gid=users"
       mount | grep -w "$mountDir" >/dev/null 2>&1
    fi
    exit $?
@@ -65,10 +129,7 @@ if [ "$fsType" = "sshfs" ]; then
    if [ $uFlag -eq 1 ]; then
       fusermount3 -u "$mountDir"
    else
-      xterm -class Dialog \
-            -geometry 80x5 \
-            -title "Mount: Password" \
-            -e bash --norc -i -c "mount $mountDir || { echo 'Press <return> to continue'; read -r $STUFF; }"
+      execMountCmd "mount $mountDir"
       mount | grep -w "$mountDir" >/dev/null 2>&1
    fi
    exit $?

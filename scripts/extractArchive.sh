@@ -9,7 +9,7 @@
 #
 # ChangeLog:
 # 27-10-2016: For security, add random code and check for existance of $dirName and exit if it exists
-
+# 03-07-2019: Change mimetype for gzip from application/x-gzip to application/gzip
 pname=$(basename "$0")
 rndCode=$(head -10 /dev/urandom | md5sum | cut -d " " -f 1)
 dirName="/tmp/extractArchive.$$.$rndCode"
@@ -44,7 +44,7 @@ case "$mimeType" in
 	      	xzcat "$archiveName" > "$dirName/$fileName" 2> "$tarLog"
       		error=$?
    	;;
-   	application/x-gzip)
+   	application/gzip)
       		zcat "$archiveName" > "$dirName/$fileName" 2> "$tarLog"
       		error=$?
    	;;

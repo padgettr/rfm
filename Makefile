@@ -1,6 +1,8 @@
-# Makefile for RFM - Rod's File Manager
+# Makefile for RFM
+VERSION = 1.9.0
 
-VERSION = 1.7.4
+# Edit below for extra libs (e.g. for thumbnailers etc.)
+#LIBS = -L./libdcmthumb -lm -ldcmthumb
 
 GTK_VERSION = gtk+-3.0
 CPPFLAGS =
@@ -11,13 +13,12 @@ CPPFLAGS += -D_FILE_OFFSET_BITS=64
 SRC = rfm.c
 OBJ = ${SRC:.c=.o}
 INCS = -I. -I/usr/include
-LIBS = -L/usr/lib -lc `pkg-config --libs ${GTK_VERSION}`
+LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION}`
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
-CFLAGS = -g -Wall -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
-LDFLAGS = -g ${LIBS}
+CFLAGS = -g -Wall -pthread -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
+LDFLAGS = -g -pthread ${LIBS}
 PREFIX = /usr/local
-
 # compiler and linker
 CC = gcc
 

@@ -9,22 +9,8 @@
 #define RFM_MX_MSGBOX_CHARS 1500 /* Maximum chars for RFM_EXEC_SYNC_MARKUP output; messages exceeding this will be displayed using RFM_EXEC_SYNC_TEXT_BOX mode */
 #define RFM_MX_ARGS 128 /* Maximum allowed number of command line arguments in action commands below */
 #define RFM_MOUNT_MEDIA_PATH "/run/media" /* Where specified mount handler mounts filesystems (e.g. udisksctl mount) */
-
-static const time_t rfm_mtimeOffset=60;   /* Display modified files as bold text (age in seconds) */
-static int do_thumbs=1;			/* Attempt to generate thumbnail images of files */
-static int showMimeType=0;		/* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
-
-/* Thumbnailers
- * The first entry MUST be for the internal thumbnail generator - this may be the only entry.
- * Enter sub type as "*" to use thumbnailer for all sub types of mime root
- * The thumbnailer will be called as:
- * $0 /path/to/source/file /path/to/thumbnail thumbnail_size
- */
-static const RFM_Thumbnailers thumbnailers[] = {
-   /* mime root      mime sub type        thumbnail program */
-   { "image",        "*",                 "RFM_internal"},
-   { "application",  "dicom",             "/usr/local/bin/mk_dcm_thumb.sh"},
-};
+#define RFM_MTIME_OFFSET 60      /* Display modified files as bold text (age in seconds) */
+#define RFM_INOTIFY_TIMEOUT 500  /* ms between inotify events after which a full refresh is done */
 
 /* Built in commands - MUST be present */
 static const char *f_rm[]   = { "/bin/rm", "-r", "-f", NULL };
@@ -32,8 +18,7 @@ static const char *f_cp[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
 static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 
 /* Run action commands: called as run_action <list of paths to selected files> */
-//static const char *play_video[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x15", "-e", "/usr/bin/mplayer", "-msgcolor", NULL };
-static const char *play_video[]  = { "/usr/local/bin/xomxplayer", NULL };
+static const char *play_video[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x15", "-e", "/usr/bin/mplayer", "-msgcolor", NULL };
 static const char *play_audio[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x12", "-e", "/usr/bin/play", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { "/usr/local/bin/nedit", NULL };
@@ -47,8 +32,8 @@ static const char *metaflac[] = { "/usr/bin/metaflac", "--list", "--block-type=V
 static const char *du[]       = { "/usr/bin/du", "-s", "-h", NULL };
 static const char *mount[]    = { "/usr/local/bin/suMount.sh", NULL };
 static const char *umount[]   = { "/usr/local/bin/suMount.sh", "-u", NULL };
-static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL };
-static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL };
+/* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
+/* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
 static const char *properties[]     = { "/usr/local/bin/properties.sh", NULL };
 static const char *www[]        = { "/usr/bin/xterm", "-e", "lynx", NULL };
 static const char *man[]        = { "/usr/bin/xterm", "-e", "man", "--local-file", NULL };
@@ -115,8 +100,8 @@ static RFM_RunActions run_actions[] = {
    { "archive",      "inode",          "directory",            create_archive,   RFM_EXEC_NONE },
    { "mount",        "inode",          "mount-point",          mount,            RFM_EXEC_PLAIN },
    { "unmount",      "inode",          "mount-point",          umount,           RFM_EXEC_PLAIN },
-   { "mount",        "inode",          "blockdevice",          udisks_mount,     RFM_EXEC_MOUNT },
-   { "unmount",      "inode",          "blockdevice",          udisks_unmount,   RFM_EXEC_PLAIN },
+   { "mount",        "inode",          "blockdevice",          mount,            RFM_EXEC_MOUNT },
+   { "unmount",      "inode",          "blockdevice",          umount,           RFM_EXEC_PLAIN },
    { "edit",         "text",           "*",                    textEdit,         RFM_EXEC_NONE },
    { "Open",         "text",           "html",                 www,              RFM_EXEC_NONE },
    { "Play",         "video",          "*",                    play_video,       RFM_EXEC_NONE },
@@ -134,9 +119,7 @@ static RFM_RunActions run_actions[] = {
 
 static const char *dev_disk_path[]= { "/dev/disk" };
 static void show_disk_devices(const char **path) {
-   char *rfm_curPath=strdup(path[0]);
-   set_rfm_curPath(rfm_curPath);
-   free(rfm_curPath);
+   set_rfm_curPath((char*)path[0]);
 }
 
 static RFM_ToolButtons tool_buttons[] = {
@@ -144,4 +127,26 @@ static RFM_ToolButtons tool_buttons[] = {
    { "xterm",        "utilities-terminal",      NULL,                   term_cmd },
    { "rfm",          "system-file-manager",     NULL,                   new_rfm },
    { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
+};
+
+/* Thumbnailers
+ * There must be at least one entry in the thumbnailers array.
+ * To disable thumbnailing use:
+ * static const RFM_Thumbnailers thumbnailers[]={{ NULL, NULL, NULL }};
+ * Use thumbnail function set to NULL for built-in thumbnailer (gdk_pixbuf):
+ * static const RFM_Thumbnailers thumbnailers[]={{ "image", "*", NULL }};
+ * For other thumbnails, a function may be defined to handle that kind of thumbnail.
+ * The function prototype is
+ * GdkPixbuf *(func)(gchar *path, gint size);
+ * where path is the path and filename of the file to be thumbnailed, and size is
+ * the size of the thumbnail (RFM_THUMBNAIL_SIZE will be passed).
+ * The function should return the thumbnail as a pixbuf.
+ * NOTE that the thumbnailing code is run in a separate thread!
+ */
+
+//#include "libdcmthumb/dcmThumb.h"
+static const RFM_Thumbnailers thumbnailers[] = {
+   /* mime root      mime sub type        thumbnail function */
+   { "image",        "*",                 NULL },
+//   { "application",  "dicom",             dcmThumb},
 };

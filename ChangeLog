@@ -114,3 +114,17 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
                                      Tests show that for copying large numbers of large files large files, a dir refresh is triggered on every file. This doesn't really matter as the dir read time << large file copy time. For smaller files, the buffer is filled and a dir re-read is triggered much less often. I think the current method represents a reasonable balance between speed and reliability: it is very unlikely in the current method that the icon_view contents could become out of sync with actual disk items.
                                      The second point may be useful, but since my cache dir is on a RAM disk (and gets wiped on each reboot), I'm not going to bother.
         Latest thumbnail (v0.8, 2012) spec advises to use users $XDG_CACHE_HOME or fall back to $HOME/.cache/thumbnails. Added this in through use of g_get_user_cache_dir(); this implementation uses the 'normal' directory (sizes up to 128x128) only.
+
+***** Start version 1.8 due to changes in config.h *****
+
+1.8.0   Change thumbnailing array in config.h so that internal thumbnailer is indicated by a NULL program name instead of it having to be the first array item. This means it can be specified multiple times for different file types. Also allow the array to have NULL for all items - thumbnailing will be disabled in this case. The array must still exist.
+        Collate inotify requests for refresh_view: define RFM_INOTIFY_TIMEOUT in config.h. This controls how long we wait before refreshing the view. If more files arrive within the timeout, the refresh is delayed in multiples of RFM_INOTIFY_TIMEOUT.
+        Two levels for refresh view: refresh immediately on dir change.
+        Some other changes to config.h: get rid of mime_type option, this is now on command line. Also no need for do_thumbs in config.h, add to rfm CTX instead.
+1.8.1   Improvements to thumbnailer: right click on stop to put thumbnailing in the background (toggle), the iconview will be updated when finished if background is on. This is useful for huge image dirs: iconview becomes slower at updating for large models. Note that treeview doesn't seem to have this problem. Move all thumbnail file loading to one place: update_thumbnail(). This used to be inotify_update_thumbnail(), but it didn't check the mtime which could have changed in the time taken to generate thumbnails. For now, if the thumbnailing is in the background when thumbnailing finishes, a full dir refresh is done. It may be possible to just update the thumbnails using e.g. a glist and calling update_thumbnails. However, care would be needed to make sure this list was emptied at the right time and up to date, for example it's no good emptying the list after the thumbnail update, as the user may have toggled background thumbnailing off, or changed directory!
+        Fixed bug with RFM_EXEC_MOUNT in show_child_output(): directory was only switched if there was some text output. Now switches if return code is zero.
+        Add in signal item-activated again for keyboard control: use enter or space to active an item. Use tab to switch keyboard control between the toolbar and the main icon window.
+
+***** Start version 1.9 due to changes in config.h *****
+1.9.0   Remove ability to run external thumbnailing programs and replace with user defined built-in functions to handle specific mime types.
+        Remove right click on stop function; do all thumbnailing in a separate thread.

@@ -18,13 +18,8 @@ Requires gtk3, at least 3.22. Tested on Arch linux (http://www.archlinux.org).
 
 Installation
 ------------
-If you don't already have a config.h for rfm, do
-
-   cp config.def.h config.h
-   
-and edit as required (see below). The file config.h should be edited to define commands to be run on
-files of a given mime type. The layout is quite similar to dwm's config file and should be familiar
-to dwm users. It may also be neccessary to edit Makefile if some of the libraries can't be found. Then
+Edit config.h to suit your requirements.
+It may also be neccessary to edit Makefile if some of the libraries can't be found. Then
 
    make clean
    make
@@ -38,7 +33,7 @@ be done manually if required.
 The default config.h requires the scripts in scripts/ to be copied to /usr/local/bin:
 cp scripts/* /usr/local/bin
 
-The scripts use /bin/dash: can be changed to bash if required. At a minimum, properties.sh
+Some scripts use /bin/dash: can be changed to bash if required. At a minimum, properties.sh
 may be useful.
 
 If you use the default config.h, please check it to ensure you have the various apps
@@ -73,12 +68,12 @@ linux man page for execv:
    "...an array of pointers to null-terminated strings that represent the argument list available to the
     new program. The first argument, by  convention,  should  point  to  the filename associated with
     the file being executed.  The array of pointers must be terminated by a null pointer."
-The last column controls how the program should be run - see config.def.h for more details.
+The last column controls how the program should be run - see supplied config.h for more details.
 
 The copy and move operations defined here are invoked from both the action menu AND for drag and drop.
 
 This is the minimum requirement for run_actions, but can be extended for other mime types,
-for examples and further instructions see the supplied config.def.h.
+for examples and further instructions see the supplied config.h.
 
 
 Running rfm
@@ -92,7 +87,7 @@ All options are mutually exclusive:
 	-c: open in current working directory rather than $HOME
 	-d: open in given directory
 	-i: identify object: for each object activation (i.e. double click) show mime type of file on stdout
-	-v: show copywrite and version information
+	-v: show copyright and version information
 
 The -i option may be useful when setting up config.h: the file command
 doesn't always return the same type as gtk!
@@ -125,28 +120,31 @@ Thumbnails
 ----------
 GTK+ has built in imaging for many different file types; however, you can also define your own thumbnailer
 for specific mime types in config.h. The first entry in RFM_Thumbnailers is for the internal GTK based
-thumbnailer; this must be present. Additional thumbnailers may be defined: an example is given in
-config.def.h for DICOM medical imaging files. In this case it calls a script which generates a thumbnail
-using the DICOM toolkit dcmtk, and then converts the resulting file to a png with the appropriate header
-using ImageMagick.
-
-NOTE: EXTERNAL THUMBNAILERS MUST NOT MODIFY THE CURRENT RFM PARENT DIRECTORY WHEN GENERATING IMAGES!
-      Any temprorary image files should be stored elsewhere.
+thumbnailer; this must be present. Additional thumbnailers may be defined as a user defined function: see
+config.h for further details.
 
 Tool bar
 --------
 There are 5 built-in toolbar functions:
 Up      - next directory level up
 Home    - show user's home directory
-Stop    - Stop the current thumbnailing operation
+Stop    - Left Click: Stop the current thumbnailing operation; Right Click: stop display update 
 Refresh - Left Click: Refresh mounts list / current view; Right Click: to refresh and toggle display order
 Info    - Show running background tasks.
 
 Tool bar buttons can be added using config.h. See config.def.h for further details.
 
 NOTE: a right click on the refresh button will switch the sort mode from
-      alphabetical order to file modified time order (latest files first) before refreshing.
+      alphabetical order to file modified time order (latest files last) before refreshing.
       This is a toggle switch: right click again to restore the original order.
+      
+      a right click on the stop button will stop updating the view with thumbnails, but keep
+      thumbnailing remaining files in the background. This is a toggle switch, and is intended
+      for use on large image directories where the display updates may become slow. Note that
+      if background thumbnailing is off when the thumbnailing finishes, any loading skipped
+      while the thumbnailer was in background mode won't be automatically loaded. Use the
+      refresh button to display them. If background thumbnailing is on when the thumbnailer
+      finishes, the display will be automatically refreshed.
 
 Icon Themes
 -----------
@@ -184,7 +182,7 @@ Icon sizes are controlled by:
 	#define RFM_ICON_SIZE 48
 	#define RFM_THUMBNAIL_SIZE 128
 
-NOTE that all thumbnails are cached in ~/.thumbnails/normal/ according to the freedesktop specification.
+NOTE that all thumbnails are cached in ~/.cache/thumbnails/normal/ according to the freedesktop specification.
 For the normal directory, the thumbnail size should not exceed 128x128 pixels. Changing RFM_THUMBNAIL_SIZE
 will alter the generated thumbnail size ,not just the displayed size. Therefore, RFM_THUMBNAIL_SIZE should
 not exceed 128 to remain within the freedesktop specs. rfm will not complain if this is set greater than 128,
@@ -247,8 +245,8 @@ Summary Notes
 5. The config.h option
       #define RFM_SEND_DND_HOST_NAMES
    causes rfm to send host names in DnD operations. DnD is implemented using Uniform Resource Identifiers
-   (URIs). With this option, files are sent as file://hostname/path/to/file. This won't work with some apps,
-   for example draging to imagej fails. It is recommended to leave undefined unless you really need it.
+   (URIs). With this option, files are sent as file://hostname/path/to/file. This may not work with some apps.
+   It is recommended to leave undefined unless you really need it.
 6. If the output of external programs is to be displayed, the following points should be noted:
       * If pango markup is used, you need to escape any markup characters in filename etc, i.e. use
         something like sed 's/\&/\&amp\;/g; s/</\&lt\;/g; s/>/\&gt\;/g' to  replace & with &amp; < with &lt;
@@ -263,8 +261,5 @@ Author:      Dr. Rodney Padgett <rod_padgett@hotmail.com>
 
 dwm:         http://dwm.suckless.org/
 Arch Linux:  http://www.archlinux.org
-dcmtk:       http://dicom.offis.de/dcmtk
-ImageMagick: http://www.imagemagick.org/
 freedesktop: http://www.freedesktop.org/wiki/Specifications
-imagej:      http://rsbweb.nih.gov/ij/
 stock-icons: Tango Desktop Project: http://tango.freedesktop.org/
