@@ -30,7 +30,6 @@
 #              Use $XDG_VTNR to check if user is at the terminal or logged in via network (may be ssh or remote X)
 #              Add execMountCmd() function to avoid repetition of the password dialog code
 #              Apparantly some devices need to be powered down before they can be safely removed. Add -s option to umount and power down - only applies to device paths!
-# 16-11-2019:  Allow any user to mount cifs (added user options to mount: -o user=$USER,uid=$USER,gid=users
 
 execMountCmd() {
    if [ -z $DISPLAY ]; then
@@ -119,7 +118,7 @@ if [ "$fsType" = "cifs" ]; then
    if [ $uFlag -eq 1 ]; then
       sudo umount "$mountDir"
    else
-      execMountCmd "sudo mount $mountDir -o user=$USER,uid=$USER,gid=users"
+      execMountCmd "sudo mount $mountDir"
       mount | grep -w "$mountDir" >/dev/null 2>&1
    fi
    exit $?

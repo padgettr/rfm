@@ -1,4 +1,4 @@
-#!/bin/dash
+#!/bin/bash
 # Create a tar.bz2 archive of the selected directory
 # Call from filemanager
 # R. Padgett (2009) <rod_padgett@hotmail.com>
@@ -14,7 +14,13 @@
 #
 # 27-10-2016: For security reasons, don't create archive if $tmpDirName exists
 #             Added random code to directory name
-#
+# 16-07-2020: Use zstd as compression format; add in ability to easily change.
+#             Default compression options are used. To add comression options pipe tar through compression program, e.g. to use autodetected number of threads in zstd:
+#              tar -C "$path" -cf - "$filename" | zstd -T0 -q -f -o "$tmpDirName/tmp.$aType"
+
+# Set compression extension: gz - gzip; xz - xz; zst - zstd
+cExt="zst"
+
 pname=$(basename "$0")
 if [ ! -d "$1" ]; then
    xmessage "$pname: Directory expected!"
@@ -25,21 +31,34 @@ rndCode=$(head -10 /dev/urandom | md5sum | cut -d " " -f 1)
 tmpDirName="/tmp/createArchive.$$.$rndCode"
 filename=$(basename "$1")
 path=$(dirname "$1")
-aType="tar.xz"
+aType="tar.$cExt"
 
 if [ -e "$tmpDirName" ]; then
-	xmessage "$pname: $tmpDirName exists!"
+   xmessage "$pname: $tmpDirName exists!"
    exit 1
 fi
 
 mkdir "$tmpDirName"
 chmod 700 "$tmpDirName"
 
-tar -C "$path" -vcJf "$tmpDirName/tmp.$aType" "$filename" 2>&1 | xmessage -file -
+case "$cExt" in
+   gz)
+      tar -C "$path" --gz -vcf "$tmpDirName/tmp.$aType" "$filename" 2>&1 | xmessage -file -
+   ;;
+   xz)
+      tar -C "$path" --xz -vcf "$tmpDirName/tmp.$aType" "$filename" 2>&1 | xmessage -file -
+   ;;
+   zst)
+      tar -C "$path" --zstd -vcf "$tmpDirName/tmp.$aType" "$filename" 2>&1 | xmessage -file -
+   ;;
+   *)
+      tar -C "$path" --zstd -vcf "$tmpDirName/tmp.$aType" "$filename" 2>&1 | xmessage -file -
+esac
+
 mv "$tmpDirName/tmp.$aType" "$path/$filename.$aType"
 if [ $? -gt 0 ]; then
-	mv "$tmpDirName/tmp.$aType" "$HOME/$filename.$aType" &&
-	xmessage "$pname: Created archive $HOME/$filename.$aType" ||
-	xmessage "$pname: ERROR: Archive created: $tmpDirName, but move failed."
+   mv "$tmpDirName/tmp.$aType" "$HOME/$filename.$aType" &&
+   xmessage "$pname: Created archive $HOME/$filename.$aType" ||
+   xmessage "$pname: ERROR: Archive created: $tmpDirName, but move failed."
 fi
 rm -rf "$tmpDirName"

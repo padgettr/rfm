@@ -21,7 +21,7 @@ static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 static const char *play_video[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x15", "-e", "/usr/bin/mplayer", "-msgcolor", NULL };
 static const char *play_audio[] = { "/usr/bin/xterm", "-class", "Dialog", "-geometry", "80x12", "-e", "/usr/bin/play", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
-static const char *textEdit[]   = { "/usr/local/bin/nedit", NULL };
+static const char *textEdit[]   = { "/usr/bin/nedit", NULL };
 static const char *mupdf[]      = { "/usr/bin/mupdf", NULL };
 static const char *show_image[] = { "/usr/bin/feh", "-F", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };
@@ -40,8 +40,10 @@ static const char *man[]        = { "/usr/bin/xterm", "-e", "man", "--local-file
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
 static const char *audioSpect[] = { "/usr/local/bin/spectrogram.sh", NULL };
 static const char *open_with[]  = { "/usr/local/bin/open_with_dmenu.sh", NULL };
-static const char *exiftran[]   = { "/usr/bin/exiftran", "-a", "-i", NULL };
-
+static const char *exiftran[]   = { "/usr/bin/exiftran", "-a", "-i", NULL };  /* pacman -S fbida */
+static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
+static const char *imagemagick[] = { "/usr/bin/display", NULL };
+static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
 /* Tool button commands */
 static const char *term_cmd[]  = { "/usr/bin/xterm", "+ls", NULL };
 static const char *new_rfm[]  = { "/usr/local/bin/rfm", "-c", NULL };
@@ -72,14 +74,17 @@ static RFM_RunActions run_actions[] = {
    { "Delete",       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
-   { "View",         "image",          "*",                    show_image,       RFM_EXEC_NONE },
-   { "rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
-   { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,   RFM_EXEC_TEXT },
+   { "View",         "image",          "png",                  show_image,       RFM_EXEC_NONE },
+   { "View",         "image",          "jpeg",                 show_image,       RFM_EXEC_NONE },
+   { "Rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
+   { "display",      "image",          "*",                    imagemagick,      RFM_EXEC_NONE },
+   { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  RFM_EXEC_NONE },
-   { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document", soffice, RFM_EXEC_TEXT },
+   { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document", soffice, RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.openxmlformats-officedocument.spreadsheetml.sheet",       soffice, RFM_EXEC_NONE },
-   { "Open",         "application",    "msword",               soffice,          RFM_EXEC_TEXT },
-   { "Open",         "application",    "x-gnumeric",           soffice,          RFM_EXEC_NONE },
+   { "Open",         "application",    "msword",               soffice,          RFM_EXEC_NONE },
+   { "Open",         "application",    "x-gnumeric",           gnumeric,         RFM_EXEC_NONE },
+   { "Open",         "application",    "vnd.ms-excel",         gnumeric,         RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.ms-excel",         soffice,          RFM_EXEC_NONE },
    { "extract",      "application",    "x-compressed-tar",     extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "x-bzip-compressed-tar",extract_archive,  RFM_EXEC_NONE },
@@ -106,6 +111,7 @@ static RFM_RunActions run_actions[] = {
    { "Open",         "text",           "html",                 www,              RFM_EXEC_NONE },
    { "Play",         "video",          "*",                    play_video,       RFM_EXEC_NONE },
    { "info",         "video",          "*",                    av_info,          RFM_EXEC_TEXT },
+   { "View",         "font",           "*",                    ftview,           RFM_EXEC_NONE },
 };
 
 /* Toolbar button definitions
@@ -144,9 +150,9 @@ static RFM_ToolButtons tool_buttons[] = {
  * NOTE that the thumbnailing code is run in a separate thread!
  */
 
-//#include "libdcmthumb/dcmThumb.h"
+#include "libdcmthumb/dcmThumb.h"
 static const RFM_Thumbnailers thumbnailers[] = {
    /* mime root      mime sub type        thumbnail function */
    { "image",        "*",                 NULL },
-//   { "application",  "dicom",             dcmThumb},
+   { "application",  "dicom",             dcmThumb},
 };

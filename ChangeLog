@@ -128,3 +128,20 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
 ***** Start version 1.9 due to changes in config.h *****
 1.9.0   Remove ability to run external thumbnailing programs and replace with user defined built-in functions to handle specific mime types.
         Remove right click on stop function; do all thumbnailing in a separate thread.
+1.9.1   Select previous directory when moving up the dir tree.
+        Add a simple search to show_text(): use CTRL-f to focus the search box.
+        Changes to show_child_output(), show_msgbox() and show_text(): Simplify show_msgbox(); handle rfm display types in show_child_output(); show_text() is now a top level window.
+        Clean up on_button_press() and rename to icon_view_button_press(): use case statements to make it clearer what's going on here. Revert to using item_activated() for double clicks as this seems to be working OK now!
+        Add a timer to fill_store() so that dir reads on slow media can be interrupted. All controlled by variable rfm_fill_store_status. A better solution would be to do the dir read in another thread, but this is complicated and won't help on large fast (local) dirs - here it's iconview causing the slowness.
+        Fix bug in child_supervisor(): child_attribs in loop only pointed to the first child. Bug not apparant during use unless using multiple long running jobs with stdout monitor: some jobs may have been delayed due to pipe limit exceeded.
+1.9.2   Remove fill_store timer and add new function readDir() called from a separate thread. NOTE that gtk command must only be called from main thread, so this requires a separate data store for file info. This was done so that the filer remains responsive on very slow media, e.g. slow network drives with many files.
+        Correct bug in thumbnailing thread: rfm_thumbThreadRunning was set to TRUE within the thread itself, however this creates a race condition causing two thumb jobs to be started if fill_store() is called again within the time it takes to start the thread. This bug was highlighted by rfm_readDirThreadRunning where multiple files created within the dir caused multiple dirRead() threads to start:
+               e.g. Try: for file in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do touch $file; done from shell to test.
+        mounts_handler(): Don't update the iconview on mount if there are no mounts in the current view.
+        mounts_handler(): Remove parent valid check (since version 1.1); parent dir unmounted has been handled in inotify_handler() for some time!
+1.9.3   Remove dir check from set_rfm_curPath(); move all dir opening into readDir() thread. This is to prevent freeze if e.g. network goes down. NOTE: adding an inotify watch to a network dir which is not responding doesn't block.
+        Reduce non responsive thread timeout to 2 seconds - could just completely ignore frozen threads for instant response.
+        Fix some bugs: change handling of mounts so that mount hashtable is local variable (was global read from all threads which could have resulted in a race condition if dirRead thread was running and mounts changed.
+                       change how attribute GList is populated in dirRead thread. If thread has expired, make sure we free the data. Only update GList if the thread is valid.
+                       fix malloc errors
+        Check run action output for null (\0) characters and remove if present. Some files can have null characters embedded, for example null character is used as padding in some (broken) DICOM files.

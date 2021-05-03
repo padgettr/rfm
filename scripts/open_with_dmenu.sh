@@ -1,4 +1,4 @@
-#!/bin/dash
+#!/bin/bash
 # Helper script for rfm: Open a file with a program selected via dmenu
 # Requires dmenu: http://tools.suckless.org/dmenu/
 #

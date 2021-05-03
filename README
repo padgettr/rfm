@@ -86,7 +86,7 @@ The default displayed directory is $HOME
 All options are mutually exclusive:
 	-c: open in current working directory rather than $HOME
 	-d: open in given directory
-	-i: identify object: for each object activation (i.e. double click) show mime type of file on stdout
+	-i: identify object: right click on object shows mime type of file on stdout
 	-v: show copyright and version information
 
 The -i option may be useful when setting up config.h: the file command
@@ -96,7 +96,7 @@ Using rfm
 ---------
 There are two menus: right click on an object shows the action menu of commands defined in
 config.h for the selected file's mime type; right click on the background shows a menu for
-new file / new dir menu (not configurable).
+new file / new dir / copy path to cut buffer (not configurable).
 
 Double click on a dir to enter it; double click on any other object to run the default action.
 
@@ -107,14 +107,11 @@ Single click with mouse move on selected items starts drag and drop copy or move
 primary method for copying / moving files: the copy / move (rename) on the file menu only applies
 to single objects selected. There is no clipboard support for filesystem objects.
 
-Initiating a delete on a file will always bring up a dialog window containing the buttons:
-Cancel, No, Yes, Last.
-Clicking 'Cancel' will stop the WHOLE operation before any files are actually removed.
+Copy / Move / Delete Dialogue box with Cancel, No, Yes, All buttons:
+Clicking 'Cancel' at ANY POINT will stop the WHOLE operation before any files are actually changed.
 Click 'No' to exclude the named file from the operation.
 Click 'Yes' to include the file in the operation (only useful for multiple files).
-Click Last at any point to delete all remaining files selected without further prompting.
-A similar window appears for copy and move, but ONLY if the destination already contains filesystem objects
-of the same name. Otherwise, the operation will be performed without prompting.
+Click All at any point to delete all remaining files selected without further prompting.
 
 Thumbnails
 ----------
@@ -123,12 +120,17 @@ for specific mime types in config.h. The first entry in RFM_Thumbnailers is for 
 thumbnailer; this must be present. Additional thumbnailers may be defined as a user defined function: see
 config.h for further details.
 
+NOTE that from version 1.9, all thumbnailing is done in another thread. This thread is independent of the
+main gtk thread and the icons are updated (in the main thread) when the finished thumbnail is written to
+the disk cache. Consequently thread safety should not be an issue in any user written function
+provided any interaction with gtk main loop / rfm internal variables is avoided.
+
 Tool bar
 --------
 There are 5 built-in toolbar functions:
 Up      - next directory level up
 Home    - show user's home directory
-Stop    - Left Click: Stop the current thumbnailing operation; Right Click: stop display update 
+Stop    - stop all background internal operations (user run actions are not stopped)
 Refresh - Left Click: Refresh mounts list / current view; Right Click: to refresh and toggle display order
 Info    - Show running background tasks.
 
@@ -137,18 +139,10 @@ Tool bar buttons can be added using config.h. See config.def.h for further detai
 NOTE: a right click on the refresh button will switch the sort mode from
       alphabetical order to file modified time order (latest files last) before refreshing.
       This is a toggle switch: right click again to restore the original order.
-      
-      a right click on the stop button will stop updating the view with thumbnails, but keep
-      thumbnailing remaining files in the background. This is a toggle switch, and is intended
-      for use on large image directories where the display updates may become slow. Note that
-      if background thumbnailing is off when the thumbnailing finishes, any loading skipped
-      while the thumbnailer was in background mode won't be automatically loaded. Use the
-      refresh button to display them. If background thumbnailing is on when the thumbnailer
-      finishes, the display will be automatically refreshed.
 
 Icon Themes
 -----------
-The filer falls back to showing default built-in icons taken from the Tango Icom Theme, or possibly other GTK
+The filer falls back to showing default built-in icons taken from the Tango Desktop Project, or possibly other GTK
 internal icons (these were supposed to be removed at some point by GTK developers).
 You have two options to define the icon theme / font to use:
 
@@ -164,7 +158,7 @@ Create the file: ~/.config/gtk-3.0/settings.ini and add e.g.:
 
 This will cause rfm to use the elementary icon theme (recommended) with Bitstream Vera Sans 10 pt fonts;
 
-NOTE: theme changes are not watched for in any running filer; A restart isrequired to free the old theme
+NOTE: theme changes are not watched for in any running filer; A restart is required to free the old theme
       and apply the new.
 
 2. Force the required theme:
@@ -184,12 +178,12 @@ Icon sizes are controlled by:
 
 NOTE that all thumbnails are cached in ~/.cache/thumbnails/normal/ according to the freedesktop specification.
 For the normal directory, the thumbnail size should not exceed 128x128 pixels. Changing RFM_THUMBNAIL_SIZE
-will alter the generated thumbnail size ,not just the displayed size. Therefore, RFM_THUMBNAIL_SIZE should
+will alter the generated thumbnail size and the displayed size. Therefore, RFM_THUMBNAIL_SIZE should
 not exceed 128 to remain within the freedesktop specs. rfm will not complain if this is set greater than 128,
 but other apps using the cache might!
 
-Notes on XDG related stuff
---------------------------
+Notes on XDG related stuff: untested since rfm 1.0
+--------------------------------------------------
 
 If you don't use dwm and require the filer to be registered with a desktop environment, or want to use
 with xdg-open etc, you need to:
@@ -246,7 +240,7 @@ Summary Notes
       #define RFM_SEND_DND_HOST_NAMES
    causes rfm to send host names in DnD operations. DnD is implemented using Uniform Resource Identifiers
    (URIs). With this option, files are sent as file://hostname/path/to/file. This may not work with some apps.
-   It is recommended to leave undefined unless you really need it.
+   It is recommended to leave undefined unless you really need it - it has not had any significant testing.
 6. If the output of external programs is to be displayed, the following points should be noted:
       * If pango markup is used, you need to escape any markup characters in filename etc, i.e. use
         something like sed 's/\&/\&amp\;/g; s/</\&lt\;/g; s/>/\&gt\;/g' to  replace & with &amp; < with &lt;
@@ -257,9 +251,10 @@ Summary Notes
 
 Aknowledgements / references
 ----------------------------
-Author:      Dr. Rodney Padgett <rod_padgett@hotmail.com>
+Author:                 Dr. Rodney Padgett <rod_padgett@hotmail.com>
 
-dwm:         http://dwm.suckless.org/
-Arch Linux:  http://www.archlinux.org
-freedesktop: http://www.freedesktop.org/wiki/Specifications
-stock-icons: Tango Desktop Project: http://tango.freedesktop.org/
+dwm:                    https://dwm.suckless.org/
+Arch Linux:             https://archlinux.org/
+freedesktop:            https://www.freedesktop.org/wiki/Specifications/thumbnails/
+stock-icons:            Tango Desktop Project: http://tango.freedesktop.org/Tango_Desktop_Project
+elementary icon theme:  https://github.com/elementary/icons

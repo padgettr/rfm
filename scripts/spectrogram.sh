@@ -1,4 +1,6 @@
-#!/bin/dash
+#!/bin/bash
+# Show FFT plot of music file and other info
+# Requires sox: http://sox.sourceforge.net/
 
 inFile="$1"
 outFile=$(basename "$1").png

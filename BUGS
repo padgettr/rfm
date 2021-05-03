@@ -1,3 +1,7 @@
+All versions to 1.9.1
+BUG: In child_supervisor() only the first child was checked due to typo: child_attribs=(RFM_ChildAttribs*)child_hash_values->data;
+FIXED: version 1.9.1 should be child_attribs=(RFM_ChildAttribs*)listElement->data;
+
 All versions to 1.6:
 BUG: There must be at least one external thumbnailer defined; work-around: leave the application/dicom in place, even if the suggested script doesn't exist.
 FIXED: version 1.7: Use a different model for thumbnailing - include the internal thumbnailer in the thumbnailer array so there is always one entry.
