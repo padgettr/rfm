@@ -2,7 +2,7 @@
 VERSION = 1.9.3
 
 # Edit below for extra libs (e.g. for thumbnailers etc.)
-LIBS = -L./libdcmthumb -lm -ldcmthumb
+#LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
 CPPFLAGS =
 
