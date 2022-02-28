@@ -145,3 +145,4 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
                        change how attribute GList is populated in dirRead thread. If thread has expired, make sure we free the data. Only update GList if the thread is valid.
                        fix malloc errors
         Check run action output for null (\0) characters and remove if present. Some files can have null characters embedded, for example null character is used as padding in some (broken) DICOM files.
+        Changes to drag and drop

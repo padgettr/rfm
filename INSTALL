@@ -3,6 +3,9 @@ Edit the Makefile to suit your system.
 Edit config.h as required.
 
 If you want to use the supplied support scripts, as root:
+Edit the sript and change any parameters to fit your system
+(in particular properties.sh uses ls to obtain information about the file which may fail on some systems)
+
 cp scripts/*.sh /usr/local/bin
 
 Then:

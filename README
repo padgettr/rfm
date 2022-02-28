@@ -15,6 +15,7 @@ The aim of the project was:
 Requirements
 ------------
 Requires gtk3, at least 3.22. Tested on Arch linux (http://www.archlinux.org).
+Works on xorg (tested on dwm) or wayland (tested on sway; DnD broken on weston).
 
 Installation
 ------------
@@ -30,14 +31,15 @@ As root:
 The installation part copies rfm to /usr/local/bin; this can
 be done manually if required.
 
-The default config.h requires the scripts in scripts/ to be copied to /usr/local/bin:
+The default config.h assumes certain apps are available and requires the scripts in
+scripts/ to be copied to /usr/local/bin:
 cp scripts/* /usr/local/bin
 
-Some scripts use /bin/dash: can be changed to bash if required. At a minimum, properties.sh
-may be useful.
+Some scripts require bash. At a minimum, properties.sh may be useful.
 
-If you use the default config.h, please check it to ensure you have the various apps
-installed!
+If you use the default config.h, please check it to ensure you have the defined apps
+installed! The filemanager does not use .desktop files in /usr/share/applications/,
+although it could be configured that way using a script if required.
 
 Configuration
 -------------
@@ -127,10 +129,11 @@ provided any interaction with gtk main loop / rfm internal variables is avoided.
 
 Tool bar
 --------
-There are 5 built-in toolbar functions:
+There are 6 built-in toolbar functions:
+Menu    - show the menu (same as right click)
 Up      - next directory level up
 Home    - show user's home directory
-Stop    - stop all background internal operations (user run actions are not stopped)
+Stop    - stop current directory read / thumbnailing operation
 Refresh - Left Click: Refresh mounts list / current view; Right Click: to refresh and toggle display order
 Info    - Show running background tasks.
 
@@ -139,6 +142,19 @@ Tool bar buttons can be added using config.h. See config.def.h for further detai
 NOTE: a right click on the refresh button will switch the sort mode from
       alphabetical order to file modified time order (latest files last) before refreshing.
       This is a toggle switch: right click again to restore the original order.
+
+Keyboard Controls
+-----------------
+These are default gtk keys:
+
+Arrow keys:       select item
+Enter / space:    activate item (default action)
+Shift+arrow keys: select multiple adjacent items
+Ctrl+arrow keys:  select multiple items items with the space bar
+Tab:              switch between the tool bar and the icon view
+
+For toolbar: arrow keys to navigate, enter to select.
+For menus:   arrow keys to navigate, enter to select, esc to close without selection.
 
 Icon Themes
 -----------
@@ -232,16 +248,11 @@ See LICENSE file for copyright and license details.
 Summary Notes
 -------------
 1. All file operations are carried out using shell commands, defined in config.h. 
-3. Regardless of run option, stdin is not available. Be sure to run non-interactive commands only,
+2. Regardless of run option, stdin is not available. Be sure to run non-interactive commands only,
    unless you run them inside a terminal, e.g. xterm [-hold] -e <command>.
-4. Changes to files in the displayed directory result in a rescan of the entire directory contents. This may
+3. Changes to files in the displayed directory result in a rescan of the entire directory contents. This may
    result in slow operation if the directory contains a large number of files.
-5. The config.h option
-      #define RFM_SEND_DND_HOST_NAMES
-   causes rfm to send host names in DnD operations. DnD is implemented using Uniform Resource Identifiers
-   (URIs). With this option, files are sent as file://hostname/path/to/file. This may not work with some apps.
-   It is recommended to leave undefined unless you really need it - it has not had any significant testing.
-6. If the output of external programs is to be displayed, the following points should be noted:
+4. If the output of external programs is to be displayed, the following points should be noted:
       * If pango markup is used, you need to escape any markup characters in filename etc, i.e. use
         something like sed 's/\&/\&amp\;/g; s/</\&lt\;/g; s/>/\&gt\;/g' to  replace & with &amp; < with &lt;
         and > with &gt;

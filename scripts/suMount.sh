@@ -1,7 +1,5 @@
 #!/bin/bash
 # Mount/Unmount script for rfm
-# Any passwords required are collected using xterm so that the mount utilities
-# native interface is used.
 # cifs mounts are handles through sudo:
 # Requires sudo and an entry in the sudoers file, e.g. if all cifs mounts are
 # in /smb the following can be added to sudoers file (using visudo)
@@ -30,15 +28,25 @@
 #              Use $XDG_VTNR to check if user is at the terminal or logged in via network (may be ssh or remote X)
 #              Add execMountCmd() function to avoid repetition of the password dialog code
 #              Apparantly some devices need to be powered down before they can be safely removed. Add -s option to umount and power down - only applies to device paths!
+# 16-11-2019:  Allow any user to mount cifs (added user options to mount: -o user=$USER,uid=$USER,gid=users
+# 26-06-2021:  Add in a wayland capable terminal for passwords if $WAYLAND_DISPLAY is defined.
 
 execMountCmd() {
-   if [ -z $DISPLAY ]; then
+   MNT_CMD="bash --norc -i -c \"$1 || { echo 'Press <return> to continue'; read -r $STUFF; }\""
+   if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
       bash --norc -i -c "$1"
    else
-      xterm -class Dialog \
-         -geometry 80x5 \
-         -title "Mount: Password" \
-         -e bash --norc -i -c "$1 || { echo 'Press <return> to continue'; read -r $STUFF; }"
+      if [ ! -z "$WAYLAND_DISPLAY" ] || [ ! -x /usr/bin/xterm ] ; then
+         #alacritty --class Dialog --title "Mount: Password" --option window.columns=80 window.lines=5 -e $MNT_CMD
+         vte-2.91 --name Dialog-vte --extra-margin 10 --cursor-blink=off --cursor-background-color=red --cursor-foreground-color=white \
+            --background-color=black --foreground-color=white --no-decorations --no-scrollbar \
+            --geometry=80x5 --command="$MNT_CMD"
+      else
+         xterm -class Dialog \
+            -geometry 80x5 \
+            -title "Mount: Password" \
+            -e "$MNT_CMD"
+      fi
    fi
 }
 
@@ -118,7 +126,7 @@ if [ "$fsType" = "cifs" ]; then
    if [ $uFlag -eq 1 ]; then
       sudo umount "$mountDir"
    else
-      execMountCmd "sudo mount $mountDir"
+      execMountCmd "sudo mount $mountDir -o user=$USER,uid=$USER,gid=users"
       mount | grep -w "$mountDir" >/dev/null 2>&1
    fi
    exit $?

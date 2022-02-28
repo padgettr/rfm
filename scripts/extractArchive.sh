@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/dash
 # extractArchive V2.0
 #  Script to extract the supplied archive to /tmp, then display
 #  a file manager.
@@ -12,6 +12,14 @@
 # 03-07-2019: Change mimetype for gzip from application/x-gzip to application/gzip
 # 16-07-2020: Add zstandard (zstd) decompression.
 
+# Set filemanager command to display archive contents
+filemanager_cmd="/usr/local/bin/rfm -d"
+
+# Set how messages are shown
+show_msg() {
+   gxmessage -fn monospace "$1" "$2"
+}
+
 pname=$(basename "$0")
 rndCode=$(head -10 /dev/urandom | md5sum | cut -d " " -f 1)
 dirName="/tmp/extractArchive.$$.$rndCode"
@@ -19,7 +27,6 @@ archiveName="$1"
 tmpName=$(echo "$archiveName" | awk -F '[-. ]' '{print $1 }')
 fileName=$(basename "$tmpName")
 tarLog="$dirName/$fileName.log"
-filemanager_cmd="/usr/local/bin/rfm -d"
 
 if [ $# -eq 0 ]; then
    echo "$0 usage:"
@@ -32,7 +39,7 @@ fi
 mimeType=$(file -b --mime-type "$archiveName")
 
 if [ -e "$dirName" ]; then
-   xmessage "$pname: $dirName exists!"
+   show_msg "$pname: $dirName exists!"
    exit 1
 fi
 
@@ -72,6 +79,7 @@ case "$mimeType" in
    ;;
    application/zstd)
       zstdcat "$archiveName" > "$dirName/$fileName" 2> "$tarLog"
+      error=$?
    ;;
    *)
       echo "$pname: ERROR: Mime type $mimeType" > "$tarLog"
@@ -92,20 +100,20 @@ if [ -e "$dirName/$fileName" ]; then
 fi
 
 if [ $error -ne 0 ]; then
-   xmessage -file "$tarLog"
+   show_msg -file "$tarLog"
    rm -rf "$dirName"
    exit 1
 fi
 
 $filemanager_cmd "$dirName"
 if [ $? -ne 0 ]; then
-   xmessage "$pname: can't initialise filemanager! The archive has been extracted to $dirName"
+   show_msg "$pname: can't initialise filemanager! The archive has been extracted to $dirName"
    exit 1
 fi
 
 case "$2" in
    preserve)
-      xmessage "$pname: The archive has been extracted to $dirName"
+      show_msg "$pname: The archive has been extracted to $dirName"
    ;;
    *)
       rm -rf "$dirName"
