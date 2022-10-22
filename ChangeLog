@@ -145,4 +145,12 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
                        change how attribute GList is populated in dirRead thread. If thread has expired, make sure we free the data. Only update GList if the thread is valid.
                        fix malloc errors
         Check run action output for null (\0) characters and remove if present. Some files can have null characters embedded, for example null character is used as padding in some (broken) DICOM files.
-        Changes to drag and drop
+        Alter file copy/move dialog, file_menu_cp_mv(): add extra text box and separate path and filename. Allow copy or move multiple selected files (drag and drop doesn't always work in some wayland compositors - only seems to work correctly in sway)
+        Simplify file_menu_rm() logic; replace if then else statements with case statements.
+1.9.4   Get rid of threads and go back to a single thread application: too complex with no great advantage, and possible race conditions identified by guyuming.
+        Thumbnailing is done via an idle timer which fires per thumbnail: this could still be done on a separate thread, but probably use glib thread pools.
+        Dir reading is donr via an idle timer which fires per dir item.
+        Changes to copy/move dialog: merge code with new dir / file dialog.
+        Changes to child handling - use built-in glib functions to check exit status.
+        Various code cleanups.
+

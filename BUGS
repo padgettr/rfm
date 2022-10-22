@@ -1,3 +1,9 @@
+Versions 1.9.1 - 1.9.3
+BUG: Race conditions exist in the multithread code for reading directories.
+     Raw selection data was read using strtok(), which modifies the data. It is not clear in
+     GTK docs if this is OK.
+FIXED: version 1.9.4 returns to a single threaded application (thanks guyuming for pointing this out).
+       Use glib functions to read URI lists from selection data.
 All versions to 1.9.1
 BUG: In child_supervisor() only the first child was checked due to typo: child_attribs=(RFM_ChildAttribs*)child_hash_values->data;
 FIXED: version 1.9.1 should be child_attribs=(RFM_ChildAttribs*)listElement->data;

@@ -122,11 +122,6 @@ for specific mime types in config.h. The first entry in RFM_Thumbnailers is for 
 thumbnailer; this must be present. Additional thumbnailers may be defined as a user defined function: see
 config.h for further details.
 
-NOTE that from version 1.9, all thumbnailing is done in another thread. This thread is independent of the
-main gtk thread and the icons are updated (in the main thread) when the finished thumbnail is written to
-the disk cache. Consequently thread safety should not be an issue in any user written function
-provided any interaction with gtk main loop / rfm internal variables is avoided.
-
 Tool bar
 --------
 There are 6 built-in toolbar functions:
@@ -250,9 +245,7 @@ Summary Notes
 1. All file operations are carried out using shell commands, defined in config.h. 
 2. Regardless of run option, stdin is not available. Be sure to run non-interactive commands only,
    unless you run them inside a terminal, e.g. xterm [-hold] -e <command>.
-3. Changes to files in the displayed directory result in a rescan of the entire directory contents. This may
-   result in slow operation if the directory contains a large number of files.
-4. If the output of external programs is to be displayed, the following points should be noted:
+3. If the output of external programs is to be displayed, the following points should be noted:
       * If pango markup is used, you need to escape any markup characters in filename etc, i.e. use
         something like sed 's/\&/\&amp\;/g; s/</\&lt\;/g; s/>/\&gt\;/g' to  replace & with &amp; < with &lt;
         and > with &gt;
@@ -260,7 +253,15 @@ Summary Notes
       * If the number of output chars (stdin / stderr) to be displayed exceeds RFM_MX_MSGBOX_CHARS
         the output will always be shown in a scrollable text window regardless of the run option setting.
 
-Aknowledgements / references
+Limitations
+-----------
+All processes run in a single main thread. Unresponsive directories (e.g. slow or unstable network
+shares) will cause the filer to 'hang' until they become available again.
+Changes to files in the displayed directory result in a rescan of the entire directory contents. This may
+result in slow operation if the directory contains a large number of files.
+
+
+Acknowledgements / references
 ----------------------------
 Author:                 Dr. Rodney Padgett <rod_padgett@hotmail.com>
 
@@ -269,3 +270,4 @@ Arch Linux:             https://archlinux.org/
 freedesktop:            https://www.freedesktop.org/wiki/Specifications/thumbnails/
 stock-icons:            Tango Desktop Project: http://tango.freedesktop.org/Tango_Desktop_Project
 elementary icon theme:  https://github.com/elementary/icons
+guyuming:               Thanks for pointing out some errors in the code.

@@ -21,7 +21,7 @@ static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 static const char *play_video[] = { "/usr/bin/mpv", NULL };
 static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pseudo-gui", "--", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
-static const char *textEdit[]   = { "/usr/bin/gedit", NULL };
+static const char *textEdit[]   = { "/usr/bin/gedit", "--new-window", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 static const char *show_image[] = { "/usr/bin/eog", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };
@@ -44,7 +44,7 @@ static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
 /* Tool button commands */
 //static const char *term_cmd[]  = { "/usr/bin/xterm", "+ls", NULL };
-static const char *term_cmd[] = { "/bin/bash", "--norc", "-c", "/usr/bin/xterm +ls || vte-2.91 --cursor-blink=off --cursor-background-color=red --cursor-foreground-color=white --background-color=black --foreground-color=white --no-scrollbar --no-decorations", NULL };
+static const char *term_cmd[] = { "/usr/bin/vte-2.91", "--cursor-blink=off", "--cursor-background-color=red", "--cursor-foreground-color=white", "--background-color=black", "--foreground-color=white", "--no-scrollbar", "--no-decorations", "-f", "Terminus 14", NULL };
 static const char *new_rfm[]  = { "/usr/local/bin/rfm", "-c", NULL };
 /* Run actions
  * NOTES: The first three MUST be the built in commands for cp, mv and rm, respectively.
@@ -144,7 +144,6 @@ static RFM_ToolButtons tool_buttons[] = {
  * where path is the path and filename of the file to be thumbnailed, and size is
  * the size of the thumbnail (RFM_THUMBNAIL_SIZE will be passed).
  * The function should return the thumbnail as a pixbuf.
- * NOTE that the thumbnailing code is run in a separate thread!
  */
 
 //#include "libdcmthumb/dcmThumb.h"
