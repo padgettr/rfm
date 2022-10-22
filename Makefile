@@ -16,7 +16,7 @@ LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION}`
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
 CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
-LDFLAGS = -g -pthread ${LIBS}
+LDFLAGS = -g ${LIBS}
 PREFIX = /usr/local
 # compiler and linker
 CC = gcc
