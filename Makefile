@@ -1,5 +1,5 @@
 # Makefile for RFM
-VERSION = 1.9.3
+VERSION = 1.9.4
 
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
@@ -15,7 +15,7 @@ INCS = -I. -I/usr/include
 LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION}`
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
-CFLAGS = -g -Wall -pthread -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
+CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS = -g -pthread ${LIBS}
 PREFIX = /usr/local
 # compiler and linker
