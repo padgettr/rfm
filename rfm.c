@@ -1117,6 +1117,12 @@ static void set_rfm_curPath(gchar* path)
    char *msg;
    int rfm_new_wd;
 
+   /* path==rfm_curPath will not trigger inotify update. Only a problem if called from user defined toolbutton
+    * which can be clicked multiple times, resulting in multiple calls with the same path
+    */
+   if (path==NULL || (rfm_curPath!=NULL && strcmp(rfm_curPath, path)==0))
+      return;
+
    rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
    if (rfm_new_wd < 0) {
       perror("RFM: set_rfm_curPath(): inotify_add_watch()");
