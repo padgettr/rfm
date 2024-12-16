@@ -70,7 +70,7 @@ linux man page for execv:
    "...an array of pointers to null-terminated strings that represent the argument list available to the
     new program. The first argument, by  convention,  should  point  to  the filename associated with
     the file being executed.  The array of pointers must be terminated by a null pointer."
-The last column controls how the program should be run - see supplied config.h for more details.
+The last column controls how the program should be run - see supplied config.def.h for more details.
 
 The copy and move operations defined here are invoked from both the action menu AND for drag and drop.
 
@@ -268,6 +268,6 @@ Author:                 Dr. Rodney Padgett <rod_padgett@hotmail.com>
 dwm:                    https://dwm.suckless.org/
 Arch Linux:             https://archlinux.org/
 freedesktop:            https://www.freedesktop.org/wiki/Specifications/thumbnails/
-stock-icons:            Tango Desktop Project: http://tango.freedesktop.org/Tango_Desktop_Project
+stock-icons:            Tango Desktop Project: See LICENSE for details
 elementary icon theme:  https://github.com/elementary/icons
 guyuming:               Thanks for pointing out some errors in the code.

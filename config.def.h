@@ -21,9 +21,12 @@ static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 static const char *play_video[] = { "/usr/bin/mpv", NULL };
 static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pseudo-gui", "--", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
-static const char *textEdit[]   = { "/usr/bin/gedit", "--new-window", NULL };
-static const char *mupdf[]      = { "/usr/bin/evince", NULL };
-static const char *show_image[] = { "/usr/bin/eog", NULL };
+static const char *nedit[]      = { "/usr/bin/nedit", NULL };
+static const char *mousepad[]   = { "/usr/bin/mousepad", "--disable-server", "--opening-mode=window", NULL };
+static const char *mupdf[]      = { "/usr/bin/mupdf", NULL };
+static const char *evince[]     = { "/usr/bin/evince", NULL };
+static const char *feh[]        = { "/usr/bin/feh", "-F", NULL };
+static const char *eog[]        = { "/usr/bin/eog", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };
 static const char *extract_archive[] = { "/usr/local/bin/extractArchive.sh", NULL };
 static const char *create_archive[]  = { "/usr/local/bin/createArchive.sh", NULL };
@@ -43,8 +46,9 @@ static const char *exiftran[]   = { "/usr/bin/exiftran", "-a", "-i", NULL };  /*
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
 /* Tool button commands */
-//static const char *term_cmd[]  = { "/usr/bin/xterm", "+ls", NULL };
-static const char *term_cmd[] = { "/usr/bin/vte-2.91", "--cursor-blink=off", "--cursor-background-color=red", "--cursor-foreground-color=white", "--background-color=black", "--foreground-color=white", "--no-scrollbar", "--no-decorations", "-f", "Terminus 14", NULL };
+static const char *term_cmdX[]  = { "/usr/bin/xterm", "+ls", NULL };
+static const char *term_cmdW[]  = { "/usr/bin/foot", NULL };
+//static const char *term_cmd[] = { "/usr/bin/vte-2.91", "--cursor-blink=off", "--cursor-background-color=red", "--cursor-foreground-color=white", "--background-color=black", "--foreground-color=white", "--no-scrollbar", "--no-decorations", "-f", "Terminus 14", NULL };
 static const char *new_rfm[]  = { "/usr/local/bin/rfm", "-c", NULL };
 /* Run actions
  * NOTES: The first three MUST be the built in commands for cp, mv and rm, respectively.
@@ -55,16 +59,21 @@ static const char *new_rfm[]  = { "/usr/local/bin/rfm", "-c", NULL };
  *        If the mime sub type is "*", the action will be shown for all files of type
  *        mime root. It may be the default action if no prior action is defined for the file.
  *        All stderr is sent to the filer's stderr.
- *        Any stdout may be displayed by defining the run option.
- * Run options are:
- *   RFM_EXEC_NONE   - run and forget; program is expected to show its own output
- *   RFM_EXEC_TEXT   - run and show output in a fixed font, scrolled text window
- *   RFM_EXEC_PANGO  - run and show output in a dialog window supporting pango markup
- *   RFM_EXEC_PLAIN  - run and show output in a plain text dialog window
- *   RFM_EXEC_INTERNAL - same as RFM_EXEC_PLAIN; intended for required commands cp, mv, rm
- *   RFM_EXEC_MOUNT  - same as RFM_EXEC_PLAIN; this should be specified for the mount command.
+ *        Any stdout may be displayed by defining the run exec option.
+ *        Run options are a bitmask of exec options and display options.
+ *        If no display option is set, the item will apply to both wayland and X11.
+ * Run exec options are:
+ *    RFM_EXEC_NONE   - run and forget; program is expected to show its own output
+ *    RFM_EXEC_TEXT   - run and show output in a fixed font, scrolled text window
+ *    RFM_EXEC_PANGO  - run and show output in a dialog window supporting pango markup
+ *    RFM_EXEC_PLAIN  - run and show output in a plain text dialog window
+ *    RFM_EXEC_INTERNAL - same as RFM_EXEC_PLAIN; intended for required commands cp, mv, rm
+ *    RFM_EXEC_MOUNT  - same as RFM_EXEC_PLAIN; this should be specified for the mount command.
  *                     causes the filer to auto switch on success to the directory defined by
  *                     #define RFM_MOUNT_MEDIA_PATH.
+ * Run display options are:
+ *    RFM_DISPLAY_WAYLAND - This option only applies to wayland.
+ *    RFM_DISPLAY_XORG - This option only applies to X11.
  */
 static RFM_RunActions run_actions[] = {
    /* name           mime root        mime sub type             argument          run options */
@@ -73,7 +82,8 @@ static RFM_RunActions run_actions[] = {
    { "Delete",       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
-   { "Open",         "image",          "*",                    show_image,       RFM_EXEC_NONE },
+   { "Open",         "image",          "*",                    eog,              RFM_EXEC_NONE|RFM_DISPLAY_WAYLAND },
+   { "Open",         "image",          "*",                    feh,              RFM_EXEC_NONE|RFM_DISPLAY_XORG },
    { "Rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  RFM_EXEC_NONE },
@@ -86,25 +96,27 @@ static RFM_RunActions run_actions[] = {
    { "extract",      "application",    "x-compressed-tar",     extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "x-bzip-compressed-tar",extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "x-xz-compressed-tar",  extract_archive,  RFM_EXEC_NONE },
-   { "extract",      "application",    "x-zstd-compressed-tar", extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "zip",                  extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "x-rpm",                extract_archive,  RFM_EXEC_NONE },
-   { "View",         "application",    "pdf",                  mupdf,            RFM_EXEC_NONE },
-   { "View",         "application",    "epub+zip",             mupdf,            RFM_EXEC_NONE },
-   { "View",         "application",    "x-troff-man",          man,              RFM_EXEC_NONE },
-   { "Run",          "application",    "x-java-archive",       java,             RFM_EXEC_NONE },
-   { "Open as text", "application",    "*",                    textEdit,         RFM_EXEC_NONE },
+   { "View",         "application",    "pdf",                  mupdf,            RFM_EXEC_NONE|RFM_DISPLAY_XORG },
+   { "View",         "application",    "pdf",                  evince,           RFM_EXEC_NONE|RFM_DISPLAY_WAYLAND },
+   { "View",         "application",    "epub+zip",             mupdf,            RFM_EXEC_NONE|RFM_DISPLAY_XORG },
+   { "View",         "application",    "x-troff-man",          man,              RFM_EXEC_NONE|RFM_DISPLAY_XORG },
+   { "Run",          "application",    "x-java-archive",       java,             RFM_EXEC_NONE|RFM_DISPLAY_XORG },
+   { "Open as text", "application",    "*",                    nedit,            RFM_EXEC_NONE|RFM_DISPLAY_XORG },
+   { "Open as text", "application",    "*",                    mousepad,         RFM_EXEC_NONE|RFM_DISPLAY_WAYLAND },
    { "Play",         "audio",          "*",                    play_audio,       RFM_EXEC_NONE },
    { "flac info",    "audio",          "flac",                 metaflac,         RFM_EXEC_PLAIN },
    { "info",         "audio",          "*",                    av_info,          RFM_EXEC_PLAIN },
    { "stats",        "audio",          "*",                    audioSpect,       RFM_EXEC_PANGO },
    { "count",        "inode",          "directory",            du,               RFM_EXEC_PLAIN },
    { "archive",      "inode",          "directory",            create_archive,   RFM_EXEC_NONE },
-   { "mount",        "inode",          "mount-point",          mount,            RFM_EXEC_PLAIN },
-   { "unmount",      "inode",          "mount-point",          umount,           RFM_EXEC_PLAIN },
+   { "mount",        "inode",          "mount-point",          mount,            RFM_EXEC_NONE },
+   { "unmount",      "inode",          "mount-point",          umount,           RFM_EXEC_NONE },
    { "mount",        "inode",          "blockdevice",          mount,            RFM_EXEC_MOUNT },
-   { "unmount",      "inode",          "blockdevice",          umount,           RFM_EXEC_PLAIN },
-   { "edit",         "text",           "*",                    textEdit,         RFM_EXEC_NONE },
+   { "unmount",      "inode",          "blockdevice",          umount,           RFM_EXEC_NONE },
+   { "nedit",        "text",           "*",                    nedit,            RFM_EXEC_NONE|RFM_DISPLAY_XORG },
+   { "mousepad",     "text",           "*",                    mousepad,         RFM_EXEC_NONE },
    { "Open",         "text",           "html",                 www,              RFM_EXEC_NONE },
    { "Play",         "video",          "*",                    play_video,       RFM_EXEC_NONE },
    { "info",         "video",          "*",                    av_info,          RFM_EXEC_TEXT },
@@ -126,10 +138,11 @@ static void show_disk_devices(const char **path) {
 }
 
 static RFM_ToolButtons tool_buttons[] = {
-   /* name           icon                       function    		argument*/
-   { "Terminal",     "utilities-terminal",      NULL,                   term_cmd },
-   { "rfm",          "system-file-manager",     NULL,                   new_rfm },
-   { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
+   /* name           icon                       function    		      argument                display flags*/
+   { "Terminal",     "utilities-terminal",      NULL,                   term_cmdX,           RFM_DISPLAY_XORG },
+   { "Terminal",     "utilities-terminal",      NULL,                   term_cmdW,           RFM_DISPLAY_WAYLAND },
+   { "rfm",          "system-file-manager",     NULL,                   new_rfm,             RFM_DISPLAY_XORG | RFM_DISPLAY_WAYLAND },
+   { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path,       RFM_DISPLAY_XORG | RFM_DISPLAY_WAYLAND },
 };
 
 /* Thumbnailers
@@ -144,6 +157,7 @@ static RFM_ToolButtons tool_buttons[] = {
  * where path is the path and filename of the file to be thumbnailed, and size is
  * the size of the thumbnail (RFM_THUMBNAIL_SIZE will be passed).
  * The function should return the thumbnail as a pixbuf.
+ * NOTE that the thumbnailing code is run in a separate thread!
  */
 
 //#include "libdcmthumb/dcmThumb.h"

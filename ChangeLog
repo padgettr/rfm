@@ -154,4 +154,9 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
         Changes to child handling - use built-in glib functions to check exit status.
         Various code cleanups.
         Correct bug in set_rfm_curPath(): if called with path==rfm_curPath inotify will not be triggered and strange behaviour results. This can't happen in the rfm code, however user defined tool buttons calling this (e.g. example show_disk_devices() in config.h) can be called multiple times if the button is left sensitive. Added a check on this to prevent these problems.
-        
+1.9.5   Added code to detect display type (wayland or xorg) and allow specific apps to de defined for each in config.h, by using new runOpts flags RFM_DISPLAY_* to specify which apps should run on which display type.
+        If the option is not specified the old behaviour continues, i.e. the application specified is used for both.
+
+***** Start version 1.10 due to changes in config.h *****
+1.10.0   Extend display type detection to user toolbar buttons. This required an extra field in the RFM_ToolButtons struct, requiring update to config.h, so start version 1.10. A bitmask of RFM_DISPLAY_* should be set as the new field. This determines if the button should be shown or not depending on display (xorg or wayland).
+         In file_menu_exec(): use g_list_prepend() for action list; gtk_icon_view_get_selected_items() seems to return selected items in reverse order. This is annoying if you want to e.g. play music in the selected order. NOTE that gtk_icon_view_get_selected_items() is used elsewhere (e.g. cp and mv), however the order doesn't matter in those other places.

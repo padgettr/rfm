@@ -17,7 +17,7 @@ if [ ! -z "$DISPLAY" ]; then
    menuCMD="dmenu -fn $FONT -nb $normbgcolor -nf $normfgcolor -sb $selbgcolor -sf $selfgcolor"
 else
    if [ ! -z "$WAYLAND_DISPLAY" ]; then
-      menuCMD=bemenu
+      menuCMD="wmenu -f \"Terminus 14\""
    else
       echo "ERROR: no window manager found"
       exit 1
@@ -38,3 +38,5 @@ else
 fi
 
 exe=$($pathCMD | $menuCMD) && exec "$exe" "$@"
+
+"/usr/bin/dmenu", "-fn" "terminus:size=12", "-nb", "#222222", "-sb", "
