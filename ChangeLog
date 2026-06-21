@@ -159,4 +159,4 @@ rfm-1.3: config.h format changed to allow user defined toolbar buttons.
 
 ***** Start version 1.10 due to changes in config.h *****
 1.10.0   Extend display type detection to user toolbar buttons. This required an extra field in the RFM_ToolButtons struct, requiring update to config.h, so start version 1.10. A bitmask of RFM_DISPLAY_* should be set as the new field. This determines if the button should be shown or not depending on display (xorg or wayland).
-         In file_menu_exec(): use g_list_prepend() for action list; gtk_icon_view_get_selected_items() seems to return selected items in reverse order. This is annoying if you want to e.g. play music in the selected order. NOTE that gtk_icon_view_get_selected_items() is used elsewhere (e.g. cp and mv), however the order doesn't matter in those other places.
+1.10.1   gdk_pixbuf_new_from_xpm_data() has been deprecated for some reason, remove fallback icons (icons.h) and use emblem-disabled and emblem-enabled for umounted / mounted. Tested with elementary icon theme.

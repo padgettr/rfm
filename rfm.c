@@ -20,7 +20,6 @@
 #include <gio/gunixmounts.h>
 #include <glib-unix.h>
 #include <mntent.h>
-#include <icons.h>
 #include <gdk/gdkdisplay.h>
 #include <gdk/gdkwayland.h>
 #include <gdk/gdkx.h>
@@ -296,7 +295,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdOut!=NULL) {
       if (child_attribs->runOpts&RFM_EXEC_TEXT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
          show_text(child_attribs->stdOut, child_attribs->name, child_attribs->runOpts);
-      else
+      else /* Default RFM_EXEC_PLAIN */
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
    }
 
@@ -370,13 +369,8 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    defaultPixbufs->symlink=gtk_icon_theme_load_icon(icon_theme, "emblem-symbolic-link", RFM_ICON_SIZE/2, 0, NULL);
    defaultPixbufs->broken=gtk_icon_theme_load_icon(icon_theme, "emblem-unreadable", RFM_ICON_SIZE/2, 0, NULL);
 
-   umount_pixbuf=gdk_pixbuf_new_from_xpm_data(RFM_icon_unmounted);
-   mount_pixbuf=gdk_pixbuf_new_from_xpm_data(RFM_icon_mounted);
-
-   if (defaultPixbufs->file==NULL) defaultPixbufs->file=gdk_pixbuf_new_from_xpm_data(RFM_icon_file);
-   if (defaultPixbufs->dir==NULL) defaultPixbufs->dir=gdk_pixbuf_new_from_xpm_data(RFM_icon_folder);
-   if (defaultPixbufs->symlink==NULL) defaultPixbufs->symlink=gdk_pixbuf_new_from_xpm_data(RFM_icon_symlink);
-   if (defaultPixbufs->broken==NULL) defaultPixbufs->symlink=gdk_pixbuf_new_from_xpm_data(RFM_icon_broken);
+   umount_pixbuf=gtk_icon_theme_load_icon(icon_theme, "emblem-disabled", RFM_ICON_SIZE/2, 0, NULL);
+   mount_pixbuf=gtk_icon_theme_load_icon(icon_theme, "emblem-enabled", RFM_ICON_SIZE/2, 0, NULL);
 
    /* Composite images */
    defaultPixbufs->symlinkDir=gdk_pixbuf_copy(defaultPixbufs->dir);
@@ -397,12 +391,6 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    defaultPixbufs->stop=gtk_icon_theme_load_icon(icon_theme, "process-stop", RFM_TOOL_SIZE, 0, NULL);
    defaultPixbufs->refresh=gtk_icon_theme_load_icon(icon_theme, "view-refresh", RFM_TOOL_SIZE, 0, NULL);
    defaultPixbufs->info=gtk_icon_theme_load_icon(icon_theme, "dialog-information", RFM_TOOL_SIZE, 0, NULL);
-
-   if (defaultPixbufs->up==NULL) defaultPixbufs->up=gdk_pixbuf_new_from_xpm_data(RFM_icon_up);
-   if (defaultPixbufs->home==NULL) defaultPixbufs->home=gdk_pixbuf_new_from_xpm_data(RFM_icon_home);
-   if (defaultPixbufs->stop==NULL) defaultPixbufs->stop=gdk_pixbuf_new_from_xpm_data(RFM_icon_stop);
-   if (defaultPixbufs->refresh==NULL) defaultPixbufs->refresh=gdk_pixbuf_new_from_xpm_data(RFM_icon_refresh);
-   if (defaultPixbufs->info==NULL) defaultPixbufs->info=gdk_pixbuf_new_from_xpm_data(RFM_icon_information);
    
    return defaultPixbufs;
 }

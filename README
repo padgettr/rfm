@@ -15,7 +15,7 @@ The aim of the project was:
 Requirements
 ------------
 Requires gtk3, at least 3.22. Tested on Arch linux (http://www.archlinux.org).
-Works on xorg (tested on dwm) or wayland (tested on sway; DnD broken on weston).
+Works on xorg (tested on dwm) or wayland (tested on hyprland; DnD broken on weston).
 
 Installation
 ------------
@@ -153,9 +153,7 @@ For menus:   arrow keys to navigate, enter to select, esc to close without selec
 
 Icon Themes
 -----------
-The filer falls back to showing default built-in icons taken from the Tango Desktop Project, or possibly other GTK
-internal icons (these were supposed to be removed at some point by GTK developers).
-You have two options to define the icon theme / font to use:
+Here are two options to define the icon theme / font to use:
 
 1. Use gtk-3 settings.ini (prefered method):
 
@@ -178,9 +176,9 @@ This is not prefered, because other GTK+ apps may load other themes requiring mo
 to be cached in memory. It is best for all GTK+ apps to use a common theme. If you still want this then:
    
 Edit config.h and add e.g.
-	#define RFM_ICON_THEME "Tango"
+	#define RFM_ICON_THEME "<THEME>"
    
-This will force rfm to use the Tango icon theme, if installed.
+This will force rfm to use the <THEME> icon theme, if installed.
 
 Icon sizes are controlled by:
 	#define RFM_TOOL_SIZE 22
@@ -266,8 +264,8 @@ Acknowledgements / references
 Author:                 Dr. Rodney Padgett <rod_padgett@hotmail.com>
 
 dwm:                    https://dwm.suckless.org/
+hyprland:               https://hypr.land/
 Arch Linux:             https://archlinux.org/
 freedesktop:            https://www.freedesktop.org/wiki/Specifications/thumbnails/
-stock-icons:            Tango Desktop Project: See LICENSE for details
 elementary icon theme:  https://github.com/elementary/icons
 guyuming:               Thanks for pointing out some errors in the code.

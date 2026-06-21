@@ -1,5 +1,5 @@
 # Makefile for RFM
-VERSION = 1.10.0
+VERSION = 1.10.1
 
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb

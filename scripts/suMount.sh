@@ -30,17 +30,26 @@
 #              Apparantly some devices need to be powered down before they can be safely removed. Add -s option to umount and power down - only applies to device paths!
 # 16-11-2019:  Allow any user to mount cifs (added user options to mount: -o user=$USER,uid=$USER,gid=users
 # 26-06-2021:  Add in a wayland capable terminal for passwords if $WAYLAND_DISPLAY is defined.
+# 21-10-2023:  Add support for foot, try before vte-2.91. Tests indicate foot is faster and uses less CPU. Won't parse $MNT_CMD properly, seems to strip off last quote.
+# 04-01-2024:  Allow mount commands to report errors (remove >&2)
+# 28-09-2025:  Some time ago foot started to support XDG toplevel icon. Hyprland and many others don't support this - suppress errors from foot (added >/dev/null 2>&1)
+#
 
 execMountCmd() {
    MNT_CMD="bash --norc -i -c \"$1 || { echo 'Press <return> to continue'; read -r $STUFF; }\""
    if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
       bash --norc -i -c "$1"
    else
-      if [ ! -z "$WAYLAND_DISPLAY" ] || [ ! -x /usr/bin/xterm ] ; then
-         #alacritty --class Dialog --title "Mount: Password" --option window.columns=80 window.lines=5 -e $MNT_CMD
-         vte-2.91 --name Dialog-vte --extra-margin 10 --cursor-blink=off --cursor-background-color=red --cursor-foreground-color=white \
-            --background-color=black --foreground-color=white --no-decorations --no-scrollbar \
-            --geometry=80x5 --command="$MNT_CMD"
+      if [ ! -z "$WAYLAND_DISPLAY" ]; then
+         if [ -e /usr/bin/foot ]; then
+            foot --app-id="Dialog-foot" --title="Mount: Password" --window-size-chars=80x5 \
+               -e bash --norc -i -c "$1 || { echo 'Press <return> to continue'; read -r $STUFF; }" >/dev/null 2>&1
+         else
+            vte-2.91 --name Dialog-vte --extra-margin 10 \
+               --cursor-blink=off --cursor-background-color=red --cursor-foreground-color=white \
+               --background-color=black --foreground-color=white --no-decorations --no-scrollbar \
+               --geometry=80x5 --command="$MNT_CMD"
+         fi
       else
          xterm -class Dialog \
             -geometry 80x5 \
@@ -82,7 +91,7 @@ case "$mType" in
       fi
 
       if [ $sFlag -eq 1 ]; then
-         /usr/bin/udisksctl unmount --no-user-interaction -b "$mountDev" > /dev/null 2>&1
+         /usr/bin/udisksctl unmount --no-user-interaction -b "$mountDev" > /dev/null #2>&1
          if [ -z $XDG_VTNR ]; then
             execMountCmd "/usr/bin/udisksctl power-off -b $mountDev" # NOTE: udisksctl command is detach in older versions of udisks
          else
@@ -127,7 +136,7 @@ if [ "$fsType" = "cifs" ]; then
       sudo umount "$mountDir"
    else
       execMountCmd "sudo mount $mountDir -o user=$USER,uid=$USER,gid=users"
-      mount | grep -w "$mountDir" >/dev/null 2>&1
+      mount | grep -w "$mountDir" >/dev/null #2>&1
    fi
    exit $?
 fi
@@ -137,7 +146,7 @@ if [ "$fsType" = "sshfs" ]; then
       fusermount3 -u "$mountDir"
    else
       execMountCmd "mount $mountDir"
-      mount | grep -w "$mountDir" >/dev/null 2>&1
+      mount | grep -w "$mountDir" >/dev/null #2>&1
    fi
    exit $?
 fi
